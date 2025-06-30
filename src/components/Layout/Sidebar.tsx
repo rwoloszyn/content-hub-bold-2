@@ -37,7 +37,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">ContentHub</span>
+            <span className="text-xl font-bold text-gray-900">Skaldora</span>
           </div>
           <div className="mt-2 flex items-center">
             <a 

@@ -20,7 +20,7 @@ export function SupabaseAuth() {
   return (
     <AuthLayout
       title={view === 'sign_in' ? 'Welcome back' : view === 'sign_up' ? 'Create your account' : 'Reset your password'}
-      subtitle={view === 'sign_in' ? 'Sign in to your ContentHub account' : view === 'sign_up' ? 'Start your content creation journey today' : 'Enter your email to receive reset instructions'}
+      subtitle={view === 'sign_in' ? 'Sign in to your Skaldora account' : view === 'sign_up' ? 'Start your content creation journey today' : 'Enter your email to receive reset instructions'}
     >
       <div className="space-y-6">
         {/* Demo Account Info */}
@@ -39,7 +39,7 @@ export function SupabaseAuth() {
                   Try the demo with these credentials:
                 </p>
                 <div className="text-sm text-blue-700 font-mono bg-blue-100 rounded px-2 py-1">
-                  Email: demo@contenthub.com<br />
+                  Email: demo@skaldora.com<br />
                   Password: password
                 </div>
               </div>

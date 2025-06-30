@@ -244,7 +244,7 @@ export function useAuth() {
       
       if (error) {
         // Fall back to mock authentication for demo
-        if (email === 'demo@contenthub.com' && password === 'password') {
+        if (email === 'demo@skaldora.com' && password === 'password') {
           const user: User = {
             id: 'user-1',
             name: 'Sarah Johnson',

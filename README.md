@@ -1,4 +1,4 @@
-# ContentHub - AI-Powered Content Management Platform
+# Skaldora - AI-Powered Content Management Platform
 
 [![Build with bolt.new](https://bolt.new/badge)](https://bolt.new)
 
@@ -71,7 +71,7 @@ npm run dev
 ## Demo Account
 
 You can test the application with the demo account:
-- Email: `demo@contenthub.com`
+- Email: `demo@skaldora.com`
 - Password: `password`
 
 ## Tech Stack

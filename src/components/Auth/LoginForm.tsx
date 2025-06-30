@@ -55,7 +55,7 @@ export function LoginForm({ onLogin, onOAuthLogin, onSwitchToSignup, onForgotPas
   return (
     <AuthLayout
       title="Welcome back"
-      subtitle="Sign in to your ContentHub account"
+      subtitle="Sign in to your Skaldora account"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
@@ -75,7 +75,7 @@ export function LoginForm({ onLogin, onOAuthLogin, onSwitchToSignup, onForgotPas
                 Try the demo with these credentials:
               </p>
               <div className="text-sm text-blue-700 font-mono bg-blue-100 rounded px-2 py-1">
-                Email: demo@contenthub.com<br />
+                Email: demo@skaldora.com<br />
                 Password: password
               </div>
             </div>

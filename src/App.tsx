@@ -297,7 +297,7 @@ function App() {
       case 'settings':
         return { title: 'Settings', subtitle: 'Configure your account and preferences' };
       default:
-        return { title: 'ContentHub', subtitle: '' };
+        return { title: 'Skaldora', subtitle: '' };
     }
   };
 

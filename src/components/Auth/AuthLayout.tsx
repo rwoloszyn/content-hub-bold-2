@@ -17,7 +17,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
             <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-xl flex items-center justify-center">
               <Zap className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-gray-900">ContentHub</span>
+            <span className="text-2xl font-bold text-gray-900">Skaldora</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">{title}</h1>
           <p className="text-gray-600">{subtitle}</p>
@@ -30,7 +30,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
 
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-gray-500">
-          <p>© 2024 ContentHub. All rights reserved.</p>
+          <p>© 2024 Skaldora. All rights reserved.</p>
         </div>
       </div>
     </div>
