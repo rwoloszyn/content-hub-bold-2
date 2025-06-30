@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Layout/Sidebar';
 import { Header } from './components/Layout/Header';
 import { Dashboard } from './components/Dashboard/Dashboard';
@@ -15,6 +15,7 @@ import { AuthContainer } from './components/Auth/AuthContainer';
 import { useAuth } from './hooks/useAuth';
 import { useContentData } from './hooks/useContentData';
 import { ContentItem, CalendarEvent, PlatformType } from './types';
+import { analyticsService } from './services/analyticsService';
 
 function App() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -33,6 +34,13 @@ function App() {
     scheduleContent,
   } = useContentData();
 
+  // Track tab changes for analytics
+  useEffect(() => {
+    if (isAuthenticated) {
+      analyticsService.pageView(`/${activeTab}`);
+    }
+  }, [activeTab, isAuthenticated]);
+
   // Show loading spinner while checking authentication
   if (isLoading) {
     return (
@@ -50,6 +58,7 @@ function App() {
   const handleEditContent = (content: ContentItem) => {
     setEditingContent(content);
     setShowContentEditor(true);
+    analyticsService.event('Content', 'Edit', content.type);
   };
 
   const handleDeleteContent = (id: string) => {
@@ -72,11 +81,13 @@ function App() {
     delete (duplicate as any).updatedAt;
     
     addContentItem(duplicate);
+    analyticsService.event('Content', 'Duplicated', content.type);
   };
 
   const handleScheduleContent = (content: ContentItem) => {
     setEditingContent(content);
     setShowContentEditor(true);
+    analyticsService.event('Content', 'Schedule Initiated', content.type);
   };
 
   const handleEventClick = (event: CalendarEvent) => {
@@ -89,18 +100,22 @@ function App() {
   const handleDateClick = (date: Date) => {
     setEditingContent(null);
     setShowContentEditor(true);
+    analyticsService.event('Calendar', 'Date Click', date.toISOString().split('T')[0]);
   };
 
   const handleNewContent = () => {
     setEditingContent(null);
     setShowContentEditor(true);
+    analyticsService.event('Content', 'New Content Initiated');
   };
 
   const handleSaveContent = (contentData: Omit<ContentItem, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (editingContent) {
       updateContentItem(editingContent.id, contentData);
+      analyticsService.event('Content', 'Updated', contentData.type);
     } else {
       addContentItem(contentData);
+      analyticsService.event('Content', 'Created', contentData.type);
     }
     setShowContentEditor(false);
     setEditingContent(null);
@@ -113,21 +128,30 @@ function App() {
       scheduledDate: date,
       platforms: platforms.map(type => ({ type, connected: true }))
     });
+    analyticsService.event('Content', 'Scheduled', platforms.join(','));
   };
 
   const handleUpdatePlatform = (platformType: PlatformType, updates: any) => {
     // Handle platform updates
     console.log('Update platform:', platformType, updates);
+    analyticsService.event('Platform', 'Updated', platformType);
   };
 
   const handleConnectPlatform = async (platformType: PlatformType, credentials: any) => {
     // Handle platform connection
     console.log('Connect platform:', platformType, credentials);
+    analyticsService.event('Platform', 'Connected', platformType);
   };
 
   const handleDisconnectPlatform = (platformType: PlatformType) => {
     // Handle platform disconnection
     console.log('Disconnect platform:', platformType);
+    analyticsService.event('Platform', 'Disconnected', platformType);
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    analyticsService.pageView(`/${tab}`);
   };
 
   const getTabTitle = () => {
@@ -220,7 +244,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
       
       <div className="flex-1 ml-64">
         <Header 

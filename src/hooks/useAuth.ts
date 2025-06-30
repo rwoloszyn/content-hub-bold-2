@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User } from '../types';
+import { analyticsService } from '../services/analyticsService';
 
 interface AuthState {
   user: User | null;
@@ -70,6 +71,9 @@ export function useAuth() {
         isAuthenticated: true,
         isLoading: false,
       });
+
+      // Track login event
+      analyticsService.trackLogin('email');
     } else {
       throw new Error('Invalid email or password');
     }
@@ -86,6 +90,9 @@ export function useAuth() {
       isAuthenticated: true,
       isLoading: false,
     });
+
+    // Track login event with provider
+    analyticsService.trackLogin('oauth');
   };
 
   const signup = async (email: string, password: string, name: string): Promise<void> => {
@@ -109,6 +116,9 @@ export function useAuth() {
       isAuthenticated: true,
       isLoading: false,
     });
+
+    // Track signup event
+    analyticsService.trackSignup('email');
   };
 
   const logout = async (): Promise<void> => {
@@ -121,6 +131,9 @@ export function useAuth() {
       isAuthenticated: false,
       isLoading: false,
     });
+
+    // Track logout event
+    analyticsService.event('User', 'Logout');
   };
 
   const sendPasswordReset = async (email: string): Promise<void> => {
@@ -129,6 +142,9 @@ export function useAuth() {
     
     // In a real app, this would send a password reset email
     console.log('Password reset sent to:', email);
+
+    // Track password reset request
+    analyticsService.event('User', 'Password Reset Request');
   };
 
   return {

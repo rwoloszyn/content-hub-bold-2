@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ContentItem, CalendarEvent, Platform } from '../types';
 import { mockContentItems, mockCalendarEvents, mockPlatforms } from '../utils/mockData';
+import { analyticsService } from '../services/analyticsService';
 
 export function useContentData() {
   const [contentItems, setContentItems] = useState<ContentItem[]>([]);
@@ -31,6 +32,10 @@ export function useContentData() {
       updatedAt: new Date(),
     };
     setContentItems(prev => [newItem, ...prev]);
+
+    // Track content creation
+    analyticsService.trackContentCreated(item.type);
+    
     return newItem;
   };
 
@@ -42,9 +47,18 @@ export function useContentData() {
           : item
       )
     );
+
+    // Track content update
+    analyticsService.event('Content', 'Updated', updates.type || 'unknown');
   };
 
   const deleteContentItem = (id: string) => {
+    // Track content deletion
+    const item = contentItems.find(item => item.id === id);
+    if (item) {
+      analyticsService.event('Content', 'Deleted', item.type);
+    }
+    
     setContentItems(prev => prev.filter(item => item.id !== id));
     setCalendarEvents(prev => prev.filter(event => event.contentId !== id));
   };
@@ -60,6 +74,9 @@ export function useContentData() {
       contentId,
     };
     setCalendarEvents(prev => [...prev, newEvent]);
+
+    // Track content scheduling
+    analyticsService.event('Content', 'Scheduled', platforms.join(','));
   };
 
   return {

@@ -13,10 +13,12 @@ import {
   Trash2,
   Shield,
   Clock,
-  Zap
+  Zap,
+  X
 } from 'lucide-react';
 import { revenueCatService, SUBSCRIPTION_PLANS, PLAN_FEATURES } from '../../services/revenueCatService';
 import { useAuth } from '../../hooks/useAuth';
+import { analyticsService } from '../../services/analyticsService';
 
 export function SubscriptionSettings() {
   const { user } = useAuth();
@@ -71,6 +73,17 @@ export function SubscriptionSettings() {
       setCurrentPlan(planId);
       setSuccess('Subscription updated successfully!');
       
+      // Track subscription change
+      analyticsService.trackSubscriptionChanged(planId);
+      
+      // Track purchase event
+      const planDetails = PLAN_FEATURES[planId];
+      analyticsService.trackPurchase(
+        planId,
+        'USD',
+        billingCycle === 'monthly' ? planDetails.price.monthly : planDetails.price.yearly
+      );
+      
       // Auto-hide success message after 5 seconds
       setTimeout(() => {
         setSuccess(null);
@@ -95,6 +108,9 @@ export function SubscriptionSettings() {
       setCurrentPlan(currentSubscription);
       
       setSuccess('Purchases restored successfully!');
+      
+      // Track restore event
+      analyticsService.event('Subscription', 'Restored');
       
       // Auto-hide success message after 5 seconds
       setTimeout(() => {
