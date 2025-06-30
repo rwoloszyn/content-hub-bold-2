@@ -1,36 +1,31 @@
 import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { oauthService } from '../../services/oauthService';
-import { OAuthProvider } from '../../config/oauth';
+import { useAuth } from '../../hooks/useAuth';
 
 interface OAuthButtonsProps {
-  onSuccess: (user: any) => void;
-  onError: (error: string) => void;
   disabled?: boolean;
 }
 
-export function OAuthButtons({ onSuccess, onError, disabled }: OAuthButtonsProps) {
-  const [loadingProvider, setLoadingProvider] = useState<OAuthProvider | null>(null);
+export function OAuthButtons({ disabled }: OAuthButtonsProps) {
+  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const { loginWithOAuth } = useAuth();
 
-  const handleOAuthLogin = async (provider: OAuthProvider) => {
+  const handleOAuthLogin = async (provider: 'google' | 'facebook' | 'linkedin') => {
     if (disabled || loadingProvider) return;
 
     setLoadingProvider(provider);
     
     try {
-      const user = await oauthService.authenticate(provider);
-      onSuccess(user);
+      await loginWithOAuth(provider);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `${provider} authentication failed`;
-      onError(errorMessage);
-    } finally {
+      console.error(`${provider} authentication failed:`, error);
       setLoadingProvider(null);
     }
   };
 
   const providers = [
     {
-      id: 'google' as OAuthProvider,
+      id: 'google' as const,
       name: 'Google',
       icon: (
         <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -42,7 +37,7 @@ export function OAuthButtons({ onSuccess, onError, disabled }: OAuthButtonsProps
       ),
     },
     {
-      id: 'facebook' as OAuthProvider,
+      id: 'facebook' as const,
       name: 'Facebook',
       icon: (
         <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
@@ -51,7 +46,7 @@ export function OAuthButtons({ onSuccess, onError, disabled }: OAuthButtonsProps
       ),
     },
     {
-      id: 'linkedin' as OAuthProvider,
+      id: 'linkedin' as const,
       name: 'LinkedIn',
       icon: (
         <svg className="w-5 h-5" fill="#0A66C2" viewBox="0 0 24 24">

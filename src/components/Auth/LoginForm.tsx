@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { AuthLayout } from './AuthLayout';
 import { OAuthButtons } from './OAuthButtons';
+import { useAuth } from '../../hooks/useAuth';
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -28,6 +29,7 @@ export function LoginForm({ onLogin, onOAuthLogin, onSwitchToSignup, onForgotPas
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
+  const { loginWithOAuth } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,18 +43,6 @@ export function LoginForm({ onLogin, onOAuthLogin, onSwitchToSignup, onForgotPas
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleOAuthSuccess = async (user: any) => {
-    try {
-      await onOAuthLogin(user);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'OAuth login failed. Please try again.');
-    }
-  };
-
-  const handleOAuthError = (error: string) => {
-    setError(error);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -182,11 +172,7 @@ export function LoginForm({ onLogin, onOAuthLogin, onSwitchToSignup, onForgotPas
           </div>
         </div>
 
-        <OAuthButtons
-          onSuccess={handleOAuthSuccess}
-          onError={handleOAuthError}
-          disabled={isLoading}
-        />
+        <OAuthButtons disabled={isLoading} />
 
         <div className="text-center">
           <span className="text-sm text-gray-600">Don't have an account? </span>

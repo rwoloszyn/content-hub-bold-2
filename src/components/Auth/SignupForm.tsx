@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { AuthLayout } from './AuthLayout';
 import { OAuthButtons } from './OAuthButtons';
+import { useAuth } from '../../hooks/useAuth';
 
 interface SignupFormProps {
   onSignup: (email: string, password: string, name: string) => Promise<void>;
@@ -33,6 +34,7 @@ export function SignupForm({ onSignup, onOAuthLogin, onSwitchToLogin }: SignupFo
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const { loginWithOAuth } = useAuth();
 
   const passwordRequirements = [
     { label: 'At least 8 characters', test: (pwd: string) => pwd.length >= 8 },
@@ -71,18 +73,6 @@ export function SignupForm({ onSignup, onOAuthLogin, onSwitchToLogin }: SignupFo
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleOAuthSuccess = async (user: any) => {
-    try {
-      await onOAuthLogin(user);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'OAuth signup failed. Please try again.');
-    }
-  };
-
-  const handleOAuthError = (error: string) => {
-    setError(error);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -266,11 +256,7 @@ export function SignupForm({ onSignup, onOAuthLogin, onSwitchToLogin }: SignupFo
           </div>
         </div>
 
-        <OAuthButtons
-          onSuccess={handleOAuthSuccess}
-          onError={handleOAuthError}
-          disabled={isLoading}
-        />
+        <OAuthButtons disabled={isLoading} />
 
         <div className="text-center">
           <span className="text-sm text-gray-600">Already have an account? </span>

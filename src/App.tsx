@@ -12,6 +12,7 @@ import { PlatformManagement } from './components/PlatformManagement/PlatformMana
 import { NotionSync } from './components/NotionSync/NotionSync';
 import { Settings } from './components/Settings/Settings';
 import { AuthContainer } from './components/Auth/AuthContainer';
+import { ResetPassword } from './components/Auth/ResetPassword';
 import { useAuth } from './hooks/useAuth';
 import { useContentData } from './hooks/useContentData';
 import { ContentItem, CalendarEvent, PlatformType } from './types';
@@ -41,6 +42,9 @@ function App() {
     }
   }, [activeTab, isAuthenticated]);
 
+  // Check if this is a password reset route
+  const isPasswordResetRoute = window.location.pathname === '/reset-password';
+
   // Show loading spinner while checking authentication
   if (isLoading) {
     return (
@@ -48,6 +52,11 @@ function App() {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     );
+  }
+
+  // Show password reset screen if on reset password route
+  if (isPasswordResetRoute) {
+    return <ResetPassword />;
   }
 
   // Show auth screens if not authenticated

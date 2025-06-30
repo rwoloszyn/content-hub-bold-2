@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LoginForm } from './LoginForm';
 import { SignupForm } from './SignupForm';
 import { ForgotPasswordForm } from './ForgotPasswordForm';
 import { OAuthCallback } from './OAuthCallback';
 import { useAuth } from '../../hooks/useAuth';
+import { SupabaseAuth } from './SupabaseAuth';
 
-type AuthView = 'login' | 'signup' | 'forgot-password' | 'oauth-callback';
+type AuthView = 'login' | 'signup' | 'forgot-password' | 'oauth-callback' | 'supabase-auth';
 
 export function AuthContainer() {
   const [currentView, setCurrentView] = useState<AuthView>(() => {
@@ -14,7 +15,7 @@ export function AuthContainer() {
     if (urlParams.get('code') && urlParams.get('state')) {
       return 'oauth-callback';
     }
-    return 'login';
+    return 'supabase-auth';
   });
   
   const { login, loginWithOAuth, signup, sendPasswordReset } = useAuth();
@@ -65,6 +66,9 @@ export function AuthContainer() {
     
     case 'oauth-callback':
       return <OAuthCallback />;
+    
+    case 'supabase-auth':
+      return <SupabaseAuth />;
     
     default:
       return null;

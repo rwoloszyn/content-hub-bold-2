@@ -54,9 +54,9 @@ export function useAuth() {
               
             const user: User = {
               id: supabaseUser.id,
-              name: profileData?.name || supabaseUser.email?.split('@')[0] || 'User',
+              name: profileData?.name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
               email: supabaseUser.email || '',
-              avatar: profileData?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
+              avatar: profileData?.avatar_url || supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
             };
             
             setAuthState({
@@ -99,12 +99,37 @@ export function useAuth() {
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event);
+        
         if (event === 'SIGNED_IN' && session) {
           const { data: { user: supabaseUser } } = await supabase.auth.getUser();
           
           if (supabaseUser) {
-            // Get user profile data
-            const { data: profileData } = await supabase
+            // Check if profile exists
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', supabaseUser.id)
+              .single();
+              
+            // If profile doesn't exist, create it
+            if (profileError || !profileData) {
+              const { error: insertError } = await supabase
+                .from('profiles')
+                .insert({
+                  id: supabaseUser.id,
+                  name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+                  email: supabaseUser.email,
+                  avatar_url: supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
+                });
+                
+              if (insertError) {
+                console.error('Failed to create profile:', insertError);
+              }
+            }
+            
+            // Get updated profile data
+            const { data: updatedProfile } = await supabase
               .from('profiles')
               .select('*')
               .eq('id', supabaseUser.id)
@@ -112,9 +137,9 @@ export function useAuth() {
               
             const user: User = {
               id: supabaseUser.id,
-              name: profileData?.name || supabaseUser.email?.split('@')[0] || 'User',
+              name: updatedProfile?.name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
               email: supabaseUser.email || '',
-              avatar: profileData?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
+              avatar: updatedProfile?.avatar_url || supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
             };
             
             setAuthState({
@@ -125,6 +150,10 @@ export function useAuth() {
             
             // Set user in analytics service
             analyticsService.setUser(user);
+            
+            // Track login event
+            const provider = supabaseUser.app_metadata?.provider || 'email';
+            analyticsService.trackLogin(provider);
           }
         } else if (event === 'SIGNED_OUT') {
           setAuthState({
@@ -135,6 +164,34 @@ export function useAuth() {
           
           // Clear user in analytics service
           analyticsService.setUser(null);
+        } else if (event === 'USER_UPDATED') {
+          // Refresh user data
+          const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+          
+          if (supabaseUser) {
+            // Get updated profile data
+            const { data: updatedProfile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', supabaseUser.id)
+              .single();
+              
+            const user: User = {
+              id: supabaseUser.id,
+              name: updatedProfile?.name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+              email: supabaseUser.email || '',
+              avatar: updatedProfile?.avatar_url || supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
+            };
+            
+            setAuthState({
+              user,
+              isAuthenticated: true,
+              isLoading: false,
+            });
+            
+            // Update user in analytics service
+            analyticsService.setUser(user);
+          }
         }
       }
     );
@@ -184,61 +241,27 @@ export function useAuth() {
         
         throw error;
       }
-      
-      if (data.user) {
-        // Get user profile data
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-          
-        const user: User = {
-          id: data.user.id,
-          name: profileData?.name || data.user.email?.split('@')[0] || 'User',
-          email: data.user.email || '',
-          avatar: profileData?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
-        };
-        
-        setAuthState({
-          user,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-        
-        // Set user in analytics service
-        analyticsService.setUser(user);
-        
-        // Track login event
-        analyticsService.trackLogin('email');
-      }
     } catch (error) {
       console.error('Login failed:', error);
       throw new Error('Invalid email or password');
     }
   };
 
-  const loginWithOAuth = async (user: User): Promise<void> => {
+  const loginWithOAuth = async (provider: 'google' | 'facebook' | 'linkedin'): Promise<void> => {
     try {
-      // In a real implementation, this would be handled by Supabase OAuth
-      // For this demo, we'll just store the user data
-      
-      // Store OAuth user data
-      const token = `oauth_token_${user.id}`;
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('user_data', JSON.stringify(user));
-      
-      setAuthState({
-        user,
-        isAuthenticated: true,
-        isLoading: false,
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
       
-      // Set user in analytics service
-      analyticsService.setUser(user);
+      if (error) {
+        throw error;
+      }
       
-      // Track login event with provider
-      analyticsService.trackLogin('oauth');
+      // Track OAuth login attempt
+      analyticsService.event('Auth', 'OAuth Login Attempt', provider);
     } catch (error) {
       console.error('OAuth login failed:', error);
       throw error;
@@ -262,64 +285,8 @@ export function useAuth() {
         throw error;
       }
       
-      if (data.user) {
-        // Create profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            name,
-            email: data.user.email,
-            avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3b82f6&color=fff`,
-          });
-          
-        if (profileError) {
-          console.error('Failed to create profile:', profileError);
-        }
-        
-        const user: User = {
-          id: data.user.id,
-          name,
-          email: data.user.email || '',
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3b82f6&color=fff`,
-        };
-        
-        setAuthState({
-          user,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-        
-        // Set user in analytics service
-        analyticsService.setUser(user);
-        
-        // Track signup event
-        analyticsService.trackSignup('email');
-      } else {
-        // Fall back to mock signup for demo
-        const user: User = {
-          id: `user-${Date.now()}`,
-          name,
-          email,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3b82f6&color=fff`,
-        };
-        
-        // Store auth data
-        localStorage.setItem('auth_token', 'mock_token_123');
-        localStorage.setItem('user_data', JSON.stringify(user));
-        
-        setAuthState({
-          user,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-        
-        // Set user in analytics service
-        analyticsService.setUser(user);
-        
-        // Track signup event
-        analyticsService.trackSignup('email');
-      }
+      // Track signup event
+      analyticsService.trackSignup('email');
     } catch (error) {
       console.error('Signup failed:', error);
       throw error;
@@ -367,12 +334,7 @@ export function useAuth() {
       analyticsService.event('User', 'Password Reset Request');
     } catch (error) {
       console.error('Password reset failed:', error);
-      
-      // For demo purposes, we'll just log the request
-      console.log('Password reset requested for:', email);
-      
-      // Track password reset request
-      analyticsService.event('User', 'Password Reset Request');
+      throw error;
     }
   };
 

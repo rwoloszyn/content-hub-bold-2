@@ -8,6 +8,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { AuthLayout } from './AuthLayout';
+import { supabase } from '../../services/supabaseClient';
+import { analyticsService } from '../../services/analyticsService';
 
 interface ForgotPasswordFormProps {
   onSendReset: (email: string) => Promise<void>;
@@ -26,10 +28,24 @@ export function ForgotPasswordForm({ onSendReset, onBackToLogin }: ForgotPasswor
     setIsLoading(true);
 
     try {
-      await onSendReset(email);
+      // Use Supabase's password reset functionality
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
       setSuccess(true);
+      
+      // Track password reset request
+      analyticsService.event('Auth', 'Password Reset Requested');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send reset email. Please try again.');
+      
+      // Track password reset error
+      analyticsService.event('Auth', 'Password Reset Error', err.message);
     } finally {
       setIsLoading(false);
     }
