@@ -214,12 +214,15 @@ class AnalyticsService {
         };
         
         if (this.useEdgeFunction) {
-          // Use Edge Function
+          // Use Edge Function - Fix: Properly await session and extract access token
+          const { data: { session } } = await supabase.auth.getSession();
+          const accessToken = session?.access_token;
+          
           await fetch(`${SUPABASE_URL}/functions/v1/analytics/pageview`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabase.auth.getSession()}`
+              'Authorization': `Bearer ${accessToken || ''}`
             },
             body: JSON.stringify(pageViewData)
           });
@@ -244,12 +247,15 @@ class AnalyticsService {
     
     try {
       if (this.useEdgeFunction) {
-        // Use Edge Function to update time on page
+        // Use Edge Function to update time on page - Fix: Properly await session and extract access token
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+        
         await fetch(`${SUPABASE_URL}/functions/v1/analytics/update-time`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.auth.getSession()}`
+            'Authorization': `Bearer ${accessToken || ''}`
           },
           body: JSON.stringify({
             session_id: this.sessionId,
@@ -335,12 +341,15 @@ class AnalyticsService {
         };
         
         if (this.useEdgeFunction) {
-          // Use Edge Function
+          // Use Edge Function - Fix: Properly await session and extract access token
+          const { data: { session } } = await supabase.auth.getSession();
+          const accessToken = session?.access_token;
+          
           await fetch(`${SUPABASE_URL}/functions/v1/analytics/event`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabase.auth.getSession()}`
+              'Authorization': `Bearer ${accessToken || ''}`
             },
             body: JSON.stringify(eventData)
           });
@@ -429,12 +438,15 @@ class AnalyticsService {
         };
         
         if (this.useEdgeFunction) {
-          // Use Edge Function
+          // Use Edge Function - Fix: Properly await session and extract access token
+          const { data: { session } } = await supabase.auth.getSession();
+          const accessToken = session?.access_token;
+          
           await fetch(`${SUPABASE_URL}/functions/v1/analytics/purchase`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabase.auth.getSession()}`
+              'Authorization': `Bearer ${accessToken || ''}`
             },
             body: JSON.stringify(purchaseData)
           });
@@ -472,12 +484,15 @@ class AnalyticsService {
     if (this.supabaseEnabled) {
       try {
         if (this.useEdgeFunction) {
-          // Use Edge Function
+          // Use Edge Function - Fix: Properly await session and extract access token
+          const { data: { session } } = await supabase.auth.getSession();
+          const accessToken = session?.access_token;
+          
           await fetch(`${SUPABASE_URL}/functions/v1/analytics/user-properties`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabase.auth.getSession()}`
+              'Authorization': `Bearer ${accessToken || ''}`
             },
             body: JSON.stringify({
               user_id: this.currentUser.id,
