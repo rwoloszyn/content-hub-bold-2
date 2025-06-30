@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Search, 
@@ -10,124 +10,50 @@ import {
   Calendar,
   FileText,
   Users,
-  BarChart3
+  BarChart3,
+  Clock,
+  ExternalLink
 } from 'lucide-react';
-
-interface NotionDatabase {
-  id: string;
-  name: string;
-  description: string;
-  type: 'database' | 'page';
-  properties: Array<{
-    name: string;
-    type: string;
-  }>;
-  itemCount: number;
-  lastModified: Date;
-  isConnected: boolean;
-}
+import { NotionDatabase } from '../../services/notionService';
 
 interface NotionDatabaseSelectorProps {
   onClose: () => void;
   onSelect: (database: NotionDatabase) => void;
+  databases: NotionDatabase[];
 }
 
-const mockDatabases: NotionDatabase[] = [
-  {
-    id: 'db-1',
-    name: 'Content Calendar',
-    description: 'Track all content creation and publishing schedules',
-    type: 'database',
-    properties: [
-      { name: 'Title', type: 'title' },
-      { name: 'Status', type: 'select' },
-      { name: 'Publish Date', type: 'date' },
-      { name: 'Platform', type: 'multi_select' },
-      { name: 'Author', type: 'person' }
-    ],
-    itemCount: 45,
-    lastModified: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    isConnected: false,
-  },
-  {
-    id: 'db-2',
-    name: 'Blog Posts',
-    description: 'Manage blog post ideas, drafts, and published articles',
-    type: 'database',
-    properties: [
-      { name: 'Title', type: 'title' },
-      { name: 'Status', type: 'select' },
-      { name: 'Category', type: 'select' },
-      { name: 'Tags', type: 'multi_select' },
-      { name: 'Word Count', type: 'number' }
-    ],
-    itemCount: 23,
-    lastModified: new Date(Date.now() - 5 * 60 * 60 * 1000),
-    isConnected: true,
-  },
-  {
-    id: 'db-3',
-    name: 'Social Media Analytics',
-    description: 'Track performance metrics across social platforms',
-    type: 'database',
-    properties: [
-      { name: 'Post', type: 'title' },
-      { name: 'Platform', type: 'select' },
-      { name: 'Engagement Rate', type: 'number' },
-      { name: 'Reach', type: 'number' },
-      { name: 'Date', type: 'date' }
-    ],
-    itemCount: 156,
-    lastModified: new Date(Date.now() - 1 * 60 * 60 * 1000),
-    isConnected: false,
-  },
-  {
-    id: 'db-4',
-    name: 'Campaign Planning',
-    description: 'Plan and track marketing campaigns and initiatives',
-    type: 'database',
-    properties: [
-      { name: 'Campaign', type: 'title' },
-      { name: 'Status', type: 'select' },
-      { name: 'Budget', type: 'number' },
-      { name: 'Start Date', type: 'date' },
-      { name: 'Team', type: 'person' }
-    ],
-    itemCount: 12,
-    lastModified: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    isConnected: false,
-  },
-];
-
-export function NotionDatabaseSelector({ onClose, onSelect }: NotionDatabaseSelectorProps) {
+export function NotionDatabaseSelector({ 
+  onClose, 
+  onSelect,
+  databases
+}: NotionDatabaseSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<'all' | 'database' | 'page'>('all');
-  const [databases, setDatabases] = useState(mockDatabases);
   const [loading, setLoading] = useState(false);
+  const [filteredDatabases, setFilteredDatabases] = useState<NotionDatabase[]>(databases);
 
-  const filteredDatabases = databases.filter(db => {
-    const matchesSearch = db.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         db.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = selectedType === 'all' || db.type === selectedType;
-    return matchesSearch && matchesType;
-  });
+  useEffect(() => {
+    filterDatabases();
+  }, [searchQuery, selectedType, databases]);
 
-  const handleRefresh = async () => {
-    setLoading(true);
-    // Simulate API call to refresh databases
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setLoading(false);
-  };
-
-  const handleConnect = (database: NotionDatabase) => {
-    setDatabases(prev => 
-      prev.map(db => 
-        db.id === database.id 
-          ? { ...db, isConnected: true }
-          : db
-      )
-    );
-    onSelect(database);
+  const filterDatabases = () => {
+    let filtered = [...databases];
+    
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(db => 
+        db.title.toLowerCase().includes(query) || 
+        (db.description && db.description.toLowerCase().includes(query))
+      );
+    }
+    
+    // Filter by type (currently all are databases, but keeping for future)
+    if (selectedType !== 'all') {
+      filtered = filtered.filter(db => selectedType === 'database');
+    }
+    
+    setFilteredDatabases(filtered);
   };
 
   const getTypeIcon = (type: string) => {
@@ -178,21 +104,16 @@ export function NotionDatabaseSelector({ onClose, onSelect }: NotionDatabaseSele
                 <option value="database">Databases</option>
                 <option value="page">Pages</option>
               </select>
-              
-              <button
-                onClick={handleRefresh}
-                disabled={loading}
-                className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-                title="Refresh databases"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              </button>
             </div>
           </div>
 
           {/* Database List */}
           <div className="space-y-4 max-h-96 overflow-y-auto">
-            {filteredDatabases.length === 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <RefreshCw className="w-6 h-6 text-gray-400 animate-spin" />
+              </div>
+            ) : filteredDatabases.length === 0 ? (
               <div className="text-center py-8">
                 <Database className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No databases found</h3>
@@ -200,12 +121,14 @@ export function NotionDatabaseSelector({ onClose, onSelect }: NotionDatabaseSele
               </div>
             ) : (
               filteredDatabases.map((database) => {
-                const TypeIcon = getTypeIcon(database.type);
+                const TypeIcon = getTypeIcon('database');
+                const isConnected = database.isConnected;
+                
                 return (
                   <div
                     key={database.id}
                     className={`p-4 border-2 rounded-lg transition-all hover:shadow-md ${
-                      database.isConnected
+                      isConnected
                         ? 'border-green-200 bg-green-50'
                         : 'border-gray-200 hover:border-gray-300 bg-white'
                     }`}
@@ -213,40 +136,40 @@ export function NotionDatabaseSelector({ onClose, onSelect }: NotionDatabaseSele
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-3 flex-1">
                         <div className={`p-2 rounded-lg ${
-                          database.isConnected ? 'bg-green-100' : 'bg-blue-100'
+                          isConnected ? 'bg-green-100' : 'bg-blue-100'
                         }`}>
                           <TypeIcon className={`w-5 h-5 ${
-                            database.isConnected ? 'text-green-600' : 'text-blue-600'
+                            isConnected ? 'text-green-600' : 'text-blue-600'
                           }`} />
                         </div>
                         
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-1">
-                            <h3 className="font-semibold text-gray-900">{database.name}</h3>
-                            {database.isConnected && (
+                            <h3 className="font-semibold text-gray-900 truncate">{database.title}</h3>
+                            {isConnected && (
                               <CheckCircle className="w-4 h-4 text-green-500" />
                             )}
                           </div>
-                          <p className="text-gray-600 text-sm mb-3">{database.description}</p>
+                          {database.description && (
+                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">{database.description}</p>
+                          )}
                           
                           <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
-                            <span>{database.itemCount} items</span>
-                            <span>•</span>
-                            <span>Modified {database.lastModified.toLocaleDateString()}</span>
+                            <span>Last edited {new Date(database.lastEditedTime).toLocaleDateString()}</span>
                           </div>
                           
                           <div className="flex flex-wrap gap-2">
-                            {database.properties.slice(0, 4).map((property, index) => (
+                            {Object.entries(database.properties).slice(0, 4).map(([name, property], index) => (
                               <span
                                 key={index}
                                 className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full"
                               >
-                                {property.name} ({property.type})
+                                {name} ({(property as any).type})
                               </span>
                             ))}
-                            {database.properties.length > 4 && (
+                            {Object.keys(database.properties).length > 4 && (
                               <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                +{database.properties.length - 4} more
+                                +{Object.keys(database.properties).length - 4} more
                               </span>
                             )}
                           </div>
@@ -254,14 +177,14 @@ export function NotionDatabaseSelector({ onClose, onSelect }: NotionDatabaseSele
                       </div>
                       
                       <div className="ml-4">
-                        {database.isConnected ? (
+                        {isConnected ? (
                           <div className="flex items-center space-x-2 text-green-600">
                             <CheckCircle className="w-4 h-4" />
                             <span className="text-sm font-medium">Connected</span>
                           </div>
                         ) : (
                           <button
-                            onClick={() => handleConnect(database)}
+                            onClick={() => onSelect(database)}
                             className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                           >
                             Connect
@@ -283,7 +206,7 @@ export function NotionDatabaseSelector({ onClose, onSelect }: NotionDatabaseSele
                 <h4 className="font-medium text-blue-900 mb-1">Database Requirements</h4>
                 <ul className="text-sm text-blue-800 space-y-1">
                   <li>• Database must be shared with your integration</li>
-                  <li>• Required properties: Title, Status (recommended)</li>
+                  <li>• Required properties: Title (recommended)</li>
                   <li>• Integration needs read/write permissions</li>
                   <li>• Changes will sync automatically once connected</li>
                 </ul>

@@ -8,12 +8,13 @@ import {
   Shield,
   Key,
   BookOpen,
-  AlertCircle,
+  AlertTriangle,
   Info,
   Copy,
   Eye,
   EyeOff
 } from 'lucide-react';
+import { notionService } from '../../services/notionService';
 
 interface NotionConnectionWizardProps {
   onClose: () => void;
@@ -36,14 +37,16 @@ export function NotionConnectionWizard({ onClose, onComplete }: NotionConnection
   const handleOAuthConnect = () => {
     setIsConnecting(true);
     
-    // Simulate OAuth flow
-    const authUrl = `https://api.notion.com/v1/oauth/authorize?client_id=your_client_id&response_type=code&owner=user&redirect_uri=${encodeURIComponent(window.location.origin)}`;
-    
-    // In a real implementation, this would open a popup or redirect
-    setTimeout(() => {
+    try {
+      // Redirect to Notion OAuth
+      onComplete({
+        method: 'oauth'
+      });
+    } catch (error) {
+      console.error('OAuth connection failed:', error);
+      setError('Failed to connect to Notion. Please try again.');
       setIsConnecting(false);
-      setCurrentStep(3);
-    }, 2000);
+    }
   };
 
   const handleIntegrationConnect = async () => {
@@ -137,7 +140,7 @@ export function NotionConnectionWizard({ onClose, onComplete }: NotionConnection
                 <div>
                   <h5 className="font-medium text-blue-900 mb-1">What you'll get:</h5>
                   <ul className="text-sm text-blue-800 space-y-1">
-                    <li>• Sync content to Notion databases</li>
+                    <li>• Sync content with Notion databases</li>
                     <li>• Two-way synchronization</li>
                     <li>• Automated content organization</li>
                     <li>• Real-time collaboration features</li>
@@ -199,7 +202,7 @@ export function NotionConnectionWizard({ onClose, onComplete }: NotionConnection
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <div className="flex items-start space-x-3">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
                   <div>
                     <h5 className="font-medium text-yellow-900 mb-1">Security Notice</h5>
                     <p className="text-sm text-yellow-800">
@@ -252,10 +255,15 @@ export function NotionConnectionWizard({ onClose, onComplete }: NotionConnection
                     <p className="text-sm text-blue-800 mb-2">
                       Check out Notion's official guide for creating integrations
                     </p>
-                    <button className="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center space-x-1">
+                    <a 
+                      href="https://developers.notion.com/docs/getting-started" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center space-x-1"
+                    >
                       <span>View Notion Guide</span>
                       <ExternalLink className="w-3 h-3" />
-                    </button>
+                    </a>
                   </div>
                 </div>
               </div>
@@ -331,7 +339,7 @@ export function NotionConnectionWizard({ onClose, onComplete }: NotionConnection
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <div className="flex items-center space-x-2">
-                    <AlertCircle className="w-5 h-5 text-red-600" />
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
                     <span className="text-red-800">{error}</span>
                   </div>
                 </div>
