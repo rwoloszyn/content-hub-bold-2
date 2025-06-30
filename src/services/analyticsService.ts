@@ -52,7 +52,8 @@ class AnalyticsService {
   private currentUser: User | null = null;
   private pageViewStartTime: number | null = null;
   private lastPageUrl: string | null = null;
-  private useEdgeFunction = true; // Set to true to use Edge Function, false to use direct Supabase calls
+  private useEdgeFunction = false; // Disabled by default due to connection issues
+  private edgeFunctionAvailable = false;
 
   constructor() {
     this.sessionId = this.generateSessionId();
@@ -108,12 +109,46 @@ class AnalyticsService {
       if (supabase && SUPABASE_URL) {
         this.supabaseEnabled = true;
         console.log('Supabase Analytics initialized successfully');
+        
+        // Test edge function availability
+        this.testEdgeFunctionAvailability();
       }
     } catch (error) {
       console.error('Failed to initialize Supabase Analytics:', error);
     }
 
     this.initialized = true;
+  }
+
+  private async testEdgeFunctionAvailability(): Promise<void> {
+    if (!SUPABASE_URL) return;
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/analytics/health`, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        this.edgeFunctionAvailable = true;
+        this.useEdgeFunction = true;
+        console.log('Edge functions are available');
+      } else {
+        console.warn('Edge functions are not available, using direct Supabase calls');
+      }
+    } catch (error) {
+      console.warn('Edge functions are not available, using direct Supabase calls:', error.message);
+      this.edgeFunctionAvailable = false;
+      this.useEdgeFunction = false;
+    }
   }
 
   private loadClarityScript(clarityId: string): void {
@@ -172,8 +207,7 @@ class AnalyticsService {
   }
 
   private async makeEdgeFunctionRequest(endpoint: string, data: any): Promise<boolean> {
-    if (!SUPABASE_URL) {
-      console.warn('SUPABASE_URL not configured, skipping edge function call');
+    if (!SUPABASE_URL || !this.edgeFunctionAvailable) {
       return false;
     }
 
@@ -181,8 +215,12 @@ class AnalyticsService {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
       
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
       const response = await fetch(`${SUPABASE_URL}/functions/v1/analytics${endpoint}`, {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken || ''}`
@@ -190,15 +228,23 @@ class AnalyticsService {
         body: JSON.stringify(data)
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Edge function request failed: ${response.status} ${response.statusText}`, errorText);
+        // Mark edge functions as unavailable if we get consistent failures
+        this.edgeFunctionAvailable = false;
+        this.useEdgeFunction = false;
         return false;
       }
 
       return true;
     } catch (error) {
       console.error('Edge function request error:', error);
+      // Mark edge functions as unavailable on network errors
+      this.edgeFunctionAvailable = false;
+      this.useEdgeFunction = false;
       return false;
     }
   }
@@ -245,27 +291,15 @@ class AnalyticsService {
           os,
         };
         
-        if (this.useEdgeFunction) {
-          // Try edge function first, fallback to direct call if it fails
-          const success = await this.makeEdgeFunctionRequest('/pageview', pageViewData);
-          
-          if (!success) {
-            console.warn('Edge function failed, falling back to direct Supabase call');
-            // Fallback to direct Supabase call
-            const { error } = await supabase
-              .from('page_views')
-              .insert({
-                ...pageViewData,
-                ip_address: null,
-                created_at: new Date().toISOString()
-              });
-              
-            if (error) {
-              console.error('Failed to track page view in Supabase:', error);
-            }
-          }
-        } else {
-          // Direct Supabase call
+        let success = false;
+        
+        // Try edge function only if available
+        if (this.useEdgeFunction && this.edgeFunctionAvailable) {
+          success = await this.makeEdgeFunctionRequest('/pageview', pageViewData);
+        }
+        
+        // Fallback to direct Supabase call if edge function failed or unavailable
+        if (!success) {
           const { error } = await supabase
             .from('page_views')
             .insert({
@@ -288,42 +322,19 @@ class AnalyticsService {
     if (!this.supabaseEnabled) return;
     
     try {
-      if (this.useEdgeFunction) {
-        // Try edge function first, fallback to direct call if it fails
-        const success = await this.makeEdgeFunctionRequest('/update-time', {
+      let success = false;
+      
+      // Try edge function only if available
+      if (this.useEdgeFunction && this.edgeFunctionAvailable) {
+        success = await this.makeEdgeFunctionRequest('/update-time', {
           session_id: this.sessionId,
           page_url: pageUrl,
           time_on_page: Math.floor(timeOnPage / 1000) // Convert to seconds
         });
+      }
 
-        if (!success) {
-          console.warn('Edge function failed for time tracking, falling back to direct Supabase call');
-          // Fallback to direct Supabase call
-          const { data, error } = await supabase
-            .from('page_views')
-            .select('id')
-            .eq('session_id', this.sessionId)
-            .eq('page_url', pageUrl)
-            .order('timestamp', { ascending: false })
-            .limit(1);
-            
-          if (error || !data || data.length === 0) {
-            console.error('Failed to find page view to update:', error);
-            return;
-          }
-          
-          // Update the page view with the time spent
-          const { error: updateError } = await supabase
-            .from('page_views')
-            .update({ time_on_page: Math.floor(timeOnPage / 1000) }) // Convert to seconds
-            .eq('id', data[0].id);
-            
-          if (updateError) {
-            console.error('Failed to update page view with time on page:', updateError);
-          }
-        }
-      } else {
-        // Direct Supabase call
+      // Fallback to direct Supabase call if edge function failed or unavailable
+      if (!success) {
         const { data, error } = await supabase
           .from('page_views')
           .select('id')
@@ -399,27 +410,15 @@ class AnalyticsService {
           os,
         };
         
-        if (this.useEdgeFunction) {
-          // Try edge function first, fallback to direct call if it fails
-          const success = await this.makeEdgeFunctionRequest('/event', eventData);
-          
-          if (!success) {
-            console.warn('Edge function failed, falling back to direct Supabase call');
-            // Fallback to direct Supabase call
-            const { error } = await supabase
-              .from('events')
-              .insert({
-                ...eventData,
-                ip_address: null,
-                created_at: new Date().toISOString()
-              });
-              
-            if (error) {
-              console.error('Failed to track event in Supabase:', error);
-            }
-          }
-        } else {
-          // Direct Supabase call
+        let success = false;
+        
+        // Try edge function only if available
+        if (this.useEdgeFunction && this.edgeFunctionAvailable) {
+          success = await this.makeEdgeFunctionRequest('/event', eventData);
+        }
+        
+        // Fallback to direct Supabase call if edge function failed or unavailable
+        if (!success) {
           const { error } = await supabase
             .from('events')
             .insert({
@@ -506,26 +505,15 @@ class AnalyticsService {
           os,
         };
         
-        if (this.useEdgeFunction) {
-          // Try edge function first, fallback to direct call if it fails
-          const success = await this.makeEdgeFunctionRequest('/purchase', purchaseData);
-          
-          if (!success) {
-            console.warn('Edge function failed, falling back to direct Supabase call');
-            // Fallback to direct Supabase call
-            const { error } = await supabase
-              .from('purchases')
-              .insert({
-                ...purchaseData,
-                created_at: new Date().toISOString()
-              });
-              
-            if (error) {
-              console.error('Failed to track purchase in Supabase:', error);
-            }
-          }
-        } else {
-          // Direct Supabase call
+        let success = false;
+        
+        // Try edge function only if available
+        if (this.useEdgeFunction && this.edgeFunctionAvailable) {
+          success = await this.makeEdgeFunctionRequest('/purchase', purchaseData);
+        }
+        
+        // Fallback to direct Supabase call if edge function failed or unavailable
+        if (!success) {
           const { error } = await supabase
             .from('purchases')
             .insert({
@@ -560,33 +548,19 @@ class AnalyticsService {
     // Supabase Analytics
     if (this.supabaseEnabled) {
       try {
-        if (this.useEdgeFunction) {
-          // Try edge function first, fallback to direct call if it fails
-          const success = await this.makeEdgeFunctionRequest('/user-properties', {
+        let success = false;
+        
+        // Try edge function only if available
+        if (this.useEdgeFunction && this.edgeFunctionAvailable) {
+          success = await this.makeEdgeFunctionRequest('/user-properties', {
             user_id: this.currentUser.id,
             properties,
             updated_at: new Date().toISOString()
           });
+        }
 
-          if (!success) {
-            console.warn('Edge function failed, falling back to direct Supabase call');
-            // Fallback to direct Supabase call
-            const { error } = await supabase
-              .from('user_properties')
-              .upsert({
-                user_id: this.currentUser.id,
-                properties,
-                updated_at: new Date().toISOString()
-              }, {
-                onConflict: 'user_id'
-              });
-              
-            if (error) {
-              console.error('Failed to set user properties in Supabase:', error);
-            }
-          }
-        } else {
-          // Direct Supabase call
+        // Fallback to direct Supabase call if edge function failed or unavailable
+        if (!success) {
           const { error } = await supabase
             .from('user_properties')
             .upsert({
