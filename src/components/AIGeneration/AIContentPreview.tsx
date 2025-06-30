@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Copy, 
   Save, 
   Calendar, 
   RefreshCw, 
   Zap, 
-  Download, 
-  Share2,
   Eye,
   Edit3,
   CheckCircle
@@ -170,11 +168,6 @@ export function AIContentPreview({
             <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
               <Edit3 className="w-4 h-4" />
               <span>Edit</span>
-            </button>
-            
-            <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-              <Share2 className="w-4 h-4" />
-              <span>Share</span>
             </button>
           </div>
         </div>
