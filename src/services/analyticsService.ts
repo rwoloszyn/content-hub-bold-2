@@ -1,16 +1,66 @@
 import ReactGA from 'react-ga4';
 import ReactPixel from 'react-facebook-pixel';
+import { supabase } from './supabaseClient';
+import { User } from '../types';
 
 // Configuration
 const GA_TRACKING_ID = import.meta.env.VITE_GOOGLE_ANALYTICS_ID;
 const FB_PIXEL_ID = import.meta.env.VITE_FACEBOOK_PIXEL_ID;
 const CLARITY_ID = import.meta.env.VITE_MICROSOFT_CLARITY_ID;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+// Analytics event types
+export interface AnalyticsEvent {
+  id?: string;
+  user_id?: string;
+  event_name: string;
+  category: string;
+  action: string;
+  label?: string;
+  value?: number;
+  properties?: Record<string, any>;
+  timestamp: string;
+  session_id: string;
+  page_url: string;
+  referrer?: string;
+  device_type: string;
+  browser: string;
+  os: string;
+}
+
+export interface PageView {
+  id?: string;
+  user_id?: string;
+  page_url: string;
+  page_title?: string;
+  timestamp: string;
+  session_id: string;
+  referrer?: string;
+  time_on_page?: number;
+  device_type: string;
+  browser: string;
+  os: string;
+}
 
 class AnalyticsService {
   private initialized = false;
   private gaEnabled = false;
   private fbPixelEnabled = false;
   private clarityEnabled = false;
+  private supabaseEnabled = false;
+  private sessionId: string;
+  private currentUser: User | null = null;
+  private pageViewStartTime: number | null = null;
+  private lastPageUrl: string | null = null;
+  private useEdgeFunction = true; // Set to true to use Edge Function, false to use direct Supabase calls
+
+  constructor() {
+    this.sessionId = this.generateSessionId();
+  }
+
+  private generateSessionId(): string {
+    return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  }
 
   initialize(): void {
     if (this.initialized) return;
@@ -52,6 +102,17 @@ class AnalyticsService {
       }
     }
 
+    // Initialize Supabase Analytics
+    try {
+      // Check if Supabase is configured
+      if (supabase && SUPABASE_URL) {
+        this.supabaseEnabled = true;
+        console.log('Supabase Analytics initialized successfully');
+      }
+    } catch (error) {
+      console.error('Failed to initialize Supabase Analytics:', error);
+    }
+
     this.initialized = true;
   }
 
@@ -66,10 +127,64 @@ class AnalyticsService {
     document.head.appendChild(script);
   }
 
-  pageView(path: string, title?: string): void {
+  setUser(user: User | null): void {
+    this.currentUser = user;
+
+    // Set user ID in Google Analytics
+    if (this.gaEnabled && user) {
+      ReactGA.set({ userId: user.id });
+    }
+
+    // Set user data in Facebook Pixel
+    if (this.fbPixelEnabled && user) {
+      ReactPixel.setUserProperties({
+        userId: user.id,
+        email: user.email,
+      });
+    }
+  }
+
+  private getDeviceInfo(): { deviceType: string; browser: string; os: string } {
+    const userAgent = navigator.userAgent;
+    
+    // Determine device type
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    const isTablet = /iPad|Android(?!.*Mobile)/i.test(userAgent);
+    const deviceType = isTablet ? 'tablet' : isMobile ? 'mobile' : 'desktop';
+    
+    // Determine browser
+    let browser = 'unknown';
+    if (userAgent.indexOf('Chrome') > -1) browser = 'Chrome';
+    else if (userAgent.indexOf('Safari') > -1) browser = 'Safari';
+    else if (userAgent.indexOf('Firefox') > -1) browser = 'Firefox';
+    else if (userAgent.indexOf('MSIE') > -1 || userAgent.indexOf('Trident') > -1) browser = 'IE';
+    else if (userAgent.indexOf('Edge') > -1) browser = 'Edge';
+    
+    // Determine OS
+    let os = 'unknown';
+    if (userAgent.indexOf('Windows') > -1) os = 'Windows';
+    else if (userAgent.indexOf('Mac') > -1) os = 'MacOS';
+    else if (userAgent.indexOf('Linux') > -1) os = 'Linux';
+    else if (userAgent.indexOf('Android') > -1) os = 'Android';
+    else if (userAgent.indexOf('iOS') > -1 || userAgent.indexOf('iPhone') > -1 || userAgent.indexOf('iPad') > -1) os = 'iOS';
+    
+    return { deviceType, browser, os };
+  }
+
+  async pageView(path: string, title?: string): Promise<void> {
     if (!this.initialized) {
       this.initialize();
     }
+
+    // If there was a previous page view, track the time spent on that page
+    if (this.pageViewStartTime && this.lastPageUrl) {
+      const timeOnPage = Date.now() - this.pageViewStartTime;
+      await this.trackTimeOnPage(this.lastPageUrl, timeOnPage);
+    }
+
+    // Reset page view timer
+    this.pageViewStartTime = Date.now();
+    this.lastPageUrl = path;
 
     // Google Analytics
     if (this.gaEnabled) {
@@ -81,10 +196,98 @@ class AnalyticsService {
       ReactPixel.pageView();
     }
 
-    // Microsoft Clarity (no specific pageview tracking needed)
+    // Supabase Analytics
+    if (this.supabaseEnabled) {
+      try {
+        const { deviceType, browser, os } = this.getDeviceInfo();
+        
+        const pageViewData: PageView = {
+          user_id: this.currentUser?.id,
+          page_url: path,
+          page_title: title || document.title,
+          timestamp: new Date().toISOString(),
+          session_id: this.sessionId,
+          referrer: document.referrer || undefined,
+          device_type: deviceType,
+          browser,
+          os,
+        };
+        
+        if (this.useEdgeFunction) {
+          // Use Edge Function
+          await fetch(`${SUPABASE_URL}/functions/v1/analytics/pageview`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabase.auth.getSession()}`
+            },
+            body: JSON.stringify(pageViewData)
+          });
+        } else {
+          // Direct Supabase call
+          const { error } = await supabase
+            .from('page_views')
+            .insert(pageViewData);
+            
+          if (error) {
+            console.error('Failed to track page view in Supabase:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error tracking page view in Supabase:', error);
+      }
+    }
   }
 
-  event(category: string, action: string, label?: string, value?: number): void {
+  private async trackTimeOnPage(pageUrl: string, timeOnPage: number): Promise<void> {
+    if (!this.supabaseEnabled) return;
+    
+    try {
+      if (this.useEdgeFunction) {
+        // Use Edge Function to update time on page
+        await fetch(`${SUPABASE_URL}/functions/v1/analytics/update-time`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabase.auth.getSession()}`
+          },
+          body: JSON.stringify({
+            session_id: this.sessionId,
+            page_url: pageUrl,
+            time_on_page: Math.floor(timeOnPage / 1000) // Convert to seconds
+          })
+        });
+      } else {
+        // Find the most recent page view for this URL and session
+        const { data, error } = await supabase
+          .from('page_views')
+          .select('id')
+          .eq('session_id', this.sessionId)
+          .eq('page_url', pageUrl)
+          .order('timestamp', { ascending: false })
+          .limit(1);
+          
+        if (error || !data || data.length === 0) {
+          console.error('Failed to find page view to update:', error);
+          return;
+        }
+        
+        // Update the page view with the time spent
+        const { error: updateError } = await supabase
+          .from('page_views')
+          .update({ time_on_page: Math.floor(timeOnPage / 1000) }) // Convert to seconds
+          .eq('id', data[0].id);
+          
+        if (updateError) {
+          console.error('Failed to update page view with time on page:', updateError);
+        }
+      }
+    } catch (error) {
+      console.error('Error tracking time on page:', error);
+    }
+  }
+
+  async event(category: string, action: string, label?: string, value?: number, properties?: Record<string, any>): Promise<void> {
     if (!this.initialized) {
       this.initialize();
     }
@@ -104,40 +307,86 @@ class AnalyticsService {
       ReactPixel.trackCustom(action, {
         category,
         label,
-        value
+        value,
+        ...properties
       });
     }
 
-    // Microsoft Clarity (uses automatic event tracking)
+    // Supabase Analytics
+    if (this.supabaseEnabled) {
+      try {
+        const { deviceType, browser, os } = this.getDeviceInfo();
+        
+        const eventData: AnalyticsEvent = {
+          user_id: this.currentUser?.id,
+          event_name: `${category}_${action}`.toLowerCase().replace(/\s+/g, '_'),
+          category,
+          action,
+          label,
+          value,
+          properties,
+          timestamp: new Date().toISOString(),
+          session_id: this.sessionId,
+          page_url: window.location.href,
+          referrer: document.referrer || undefined,
+          device_type: deviceType,
+          browser,
+          os,
+        };
+        
+        if (this.useEdgeFunction) {
+          // Use Edge Function
+          await fetch(`${SUPABASE_URL}/functions/v1/analytics/event`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabase.auth.getSession()}`
+            },
+            body: JSON.stringify(eventData)
+          });
+        } else {
+          // Direct Supabase call
+          const { error } = await supabase
+            .from('events')
+            .insert(eventData);
+            
+          if (error) {
+            console.error('Failed to track event in Supabase:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error tracking event in Supabase:', error);
+      }
+    }
   }
 
   // Specific event tracking methods
-  trackLogin(method: string): void {
-    this.event('User', 'Login', method);
+  async trackLogin(method: string): Promise<void> {
+    await this.event('User', 'Login', method);
   }
 
-  trackSignup(method: string): void {
-    this.event('User', 'Signup', method);
+  async trackSignup(method: string): Promise<void> {
+    await this.event('User', 'Signup', method);
   }
 
-  trackContentCreated(contentType: string): void {
-    this.event('Content', 'Created', contentType);
+  async trackContentCreated(contentType: string): Promise<void> {
+    await this.event('Content', 'Created', contentType);
   }
 
-  trackContentPublished(platform: string): void {
-    this.event('Content', 'Published', platform);
+  async trackContentPublished(platform: string): Promise<void> {
+    await this.event('Content', 'Published', platform);
   }
 
-  trackSubscriptionChanged(plan: string): void {
-    this.event('Subscription', 'Changed', plan);
+  async trackSubscriptionChanged(plan: string): Promise<void> {
+    await this.event('Subscription', 'Changed', plan);
   }
 
-  trackFeatureUsed(feature: string): void {
-    this.event('Feature', 'Used', feature);
+  async trackFeatureUsed(feature: string): Promise<void> {
+    await this.event('Feature', 'Used', feature);
   }
 
   // E-commerce tracking for RevenueCat
-  trackPurchase(productId: string, currency: string, price: number): void {
+  async trackPurchase(productId: string, currency: string, price: number): Promise<void> {
     if (!this.initialized) {
       this.initialize();
     }
@@ -160,6 +409,101 @@ class AnalyticsService {
         content_ids: [productId],
         content_type: 'product'
       });
+    }
+
+    // Supabase Analytics
+    if (this.supabaseEnabled) {
+      try {
+        const { deviceType, browser, os } = this.getDeviceInfo();
+        
+        const purchaseData = {
+          user_id: this.currentUser?.id,
+          product_id: productId,
+          currency,
+          price,
+          timestamp: new Date().toISOString(),
+          session_id: this.sessionId,
+          device_type: deviceType,
+          browser,
+          os,
+        };
+        
+        if (this.useEdgeFunction) {
+          // Use Edge Function
+          await fetch(`${SUPABASE_URL}/functions/v1/analytics/purchase`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabase.auth.getSession()}`
+            },
+            body: JSON.stringify(purchaseData)
+          });
+        } else {
+          // Direct Supabase call
+          const { error } = await supabase
+            .from('purchases')
+            .insert(purchaseData);
+            
+          if (error) {
+            console.error('Failed to track purchase in Supabase:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error tracking purchase in Supabase:', error);
+      }
+    }
+  }
+
+  // Track user properties
+  async setUserProperties(properties: Record<string, any>): Promise<void> {
+    if (!this.currentUser) return;
+
+    // Google Analytics
+    if (this.gaEnabled) {
+      ReactGA.set(properties);
+    }
+
+    // Facebook Pixel
+    if (this.fbPixelEnabled) {
+      ReactPixel.setUserProperties(properties);
+    }
+
+    // Supabase Analytics
+    if (this.supabaseEnabled) {
+      try {
+        if (this.useEdgeFunction) {
+          // Use Edge Function
+          await fetch(`${SUPABASE_URL}/functions/v1/analytics/user-properties`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabase.auth.getSession()}`
+            },
+            body: JSON.stringify({
+              user_id: this.currentUser.id,
+              properties,
+              updated_at: new Date().toISOString()
+            })
+          });
+        } else {
+          // Direct Supabase call
+          const { error } = await supabase
+            .from('user_properties')
+            .upsert({
+              user_id: this.currentUser.id,
+              properties,
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'user_id'
+            });
+            
+          if (error) {
+            console.error('Failed to set user properties in Supabase:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error setting user properties in Supabase:', error);
+      }
     }
   }
 }
