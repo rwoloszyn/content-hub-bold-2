@@ -39,6 +39,20 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </div>
             <span className="text-xl font-bold text-gray-900">ContentHub</span>
           </div>
+          <div className="mt-2 flex items-center">
+            <a 
+              href="https://bolt.new" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-xs text-gray-500 hover:text-gray-700 flex items-center"
+            >
+              <img 
+                src="https://bolt.new/badge" 
+                alt="Built with bolt.new" 
+                className="h-4"
+              />
+            </a>
+          </div>
         </div>
         
         <nav className="flex-1 p-4">

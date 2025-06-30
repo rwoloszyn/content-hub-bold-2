@@ -1,5 +1,7 @@
 # ContentHub - AI-Powered Content Management Platform
 
+[![Build with bolt.new](https://bolt.new/badge)](https://bolt.new)
+
 A comprehensive content management and social media scheduling platform with AI-powered content generation.
 
 ## Features
