@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 }
 
 interface PageViewData {
@@ -68,6 +68,19 @@ serve(async (req) => {
   }
 
   try {
+    const url = new URL(req.url)
+    const path = url.pathname
+
+    // Health check endpoint
+    if (path.includes('/health')) {
+      return new Response(
+        JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
     // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -89,9 +102,6 @@ serve(async (req) => {
         refresh_token: ''
       })
     }
-
-    const url = new URL(req.url)
-    const path = url.pathname
 
     // Route based on the path
     if (path.includes('/pageview')) {
