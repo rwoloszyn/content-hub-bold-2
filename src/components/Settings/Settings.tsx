@@ -35,6 +35,7 @@ import { IntegrationSettings } from './IntegrationSettings';
 import { SupportSettings } from './SupportSettings';
 import { DeploymentSettings } from './DeploymentSettings';
 import { DomainSettings } from './DomainSettings';
+import { DesignSystem } from './DesignSystem';
 
 export function Settings() {
   const [activeTab, setActiveTab] = useState<string>('profile');
@@ -96,6 +97,12 @@ export function Settings() {
       description: 'Manage custom domains for your site',
     },
     {
+      id: 'design-system',
+      label: 'Design System',
+      icon: Palette,
+      description: 'Access design tokens and assets from Lingo',
+    },
+    {
       id: 'data',
       label: 'Data & Privacy',
       icon: Database,
@@ -135,6 +142,8 @@ export function Settings() {
         return <DeploymentSettings />;
       case 'domains':
         return <DomainSettings />;
+      case 'design-system':
+        return <DesignSystem />;
       case 'data':
         return <DataSettings />;
       case 'support':

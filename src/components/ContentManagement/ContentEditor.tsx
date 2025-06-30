@@ -10,12 +10,15 @@ import {
   Hash,
   Globe,
   Clock,
-  Zap
+  Zap,
+  Palette
 } from 'lucide-react';
 import { ContentItem, PlatformType } from '../../types';
 import { PlatformSelector } from './PlatformSelector';
 import { MediaSelector } from './MediaSelector';
 import { ScheduleModal } from './ScheduleModal';
+import { LingoAssetSelector } from './LingoAssetSelector';
+import { lingoService } from '../../services/lingoService';
 
 interface ContentEditorProps {
   content: ContentItem | null;
@@ -45,6 +48,7 @@ export function ContentEditor({
   
   const [tagInput, setTagInput] = useState('');
   const [showMediaSelector, setShowMediaSelector] = useState(false);
+  const [showLingoSelector, setShowLingoSelector] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -146,6 +150,14 @@ export function ContentEditor({
       e.preventDefault();
       addTag();
     }
+  };
+
+  const handleLingoAssetSelect = (asset: any) => {
+    setFormData(prev => ({
+      ...prev,
+      mediaUrl: asset.url
+    }));
+    setShowLingoSelector(false);
   };
 
   if (!isOpen) return null;
@@ -333,13 +345,23 @@ export function ContentEditor({
                         <div className="text-center">
                           <Image className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                           <p className="text-gray-600 mb-3">Add media to your content</p>
-                          <button
-                            type="button"
-                            onClick={() => setShowMediaSelector(true)}
-                            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
-                          >
-                            Choose Media
-                          </button>
+                          <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-3">
+                            <button
+                              type="button"
+                              onClick={() => setShowMediaSelector(true)}
+                              className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
+                            >
+                              Choose from Library
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowLingoSelector(true)}
+                              className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                              <Palette className="w-4 h-4" />
+                              <span>Choose from Lingo</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -497,6 +519,17 @@ export function ContentEditor({
           onSelect={(mediaUrl) => {
             setFormData(prev => ({ ...prev, mediaUrl }));
             setShowMediaSelector(false);
+          }}
+        />
+      )}
+
+      {/* Lingo Asset Selector Modal */}
+      {showLingoSelector && (
+        <LingoAssetSelector
+          onClose={() => setShowLingoSelector(false)}
+          onSelect={(asset) => {
+            setFormData(prev => ({ ...prev, mediaUrl: asset.url }));
+            setShowLingoSelector(false);
           }}
         />
       )}

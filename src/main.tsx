@@ -5,6 +5,7 @@ import './index.css';
 import { analyticsService } from './services/analyticsService.ts';
 import { supabase } from './services/supabaseClient.ts';
 import { sentryService } from './services/sentryService.ts';
+import { LingoProvider } from './components/LingoProvider.tsx';
 
 // Initialize services
 analyticsService.initialize();
@@ -125,7 +126,9 @@ function AppWithAnalytics() {
 
   return (
     <sentryService.ErrorBoundary fallback={<ErrorFallback />}>
-      <App />
+      <LingoProvider>
+        <App />
+      </LingoProvider>
     </sentryService.ErrorBoundary>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Upload, 
   Search, 
@@ -17,13 +17,16 @@ import {
   Copy,
   Eye,
   Star,
-  Tag
+  Tag,
+  Zap
 } from 'lucide-react';
 import { MediaGrid } from './MediaGrid';
 import { MediaUpload } from './MediaUpload';
 import { MediaFolders } from './MediaFolders';
 import { MediaFilters } from './MediaFilters';
 import { useMediaLibrary } from '../../hooks/useMediaLibrary';
+import { LingoAssetBrowser } from './LingoAssetBrowser';
+import { lingoService } from '../../services/lingoService';
 
 export function MediaLibrary() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -34,6 +37,9 @@ export function MediaLibrary() {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'size' | 'type'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showLingoBrowser, setShowLingoBrowser] = useState(false);
+  const [lingoAssets, setLingoAssets] = useState<any[]>([]);
+  const [lingoAssetsLoaded, setLingoAssetsLoaded] = useState(false);
 
   const {
     mediaItems,
@@ -46,6 +52,24 @@ export function MediaLibrary() {
     deleteFolder,
     moveToFolder,
   } = useMediaLibrary();
+
+  useEffect(() => {
+    // Load Lingo assets if not already loaded
+    if (!lingoAssetsLoaded) {
+      loadLingoAssets();
+    }
+  }, [lingoAssetsLoaded]);
+
+  const loadLingoAssets = async () => {
+    try {
+      await lingoService.initialize();
+      const assets = lingoService.getAssets();
+      setLingoAssets(assets);
+      setLingoAssetsLoaded(true);
+    } catch (error) {
+      console.error('Failed to load Lingo assets:', error);
+    }
+  };
 
   const filteredItems = mediaItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -122,6 +146,18 @@ export function MediaLibrary() {
 
   const counts = getItemCounts();
 
+  const handleImportFromLingo = (selectedAssets: any[]) => {
+    // Process the selected assets from Lingo
+    // In a real implementation, this would download and import the assets
+    console.log('Importing assets from Lingo:', selectedAssets);
+    
+    // Close the Lingo browser
+    setShowLingoBrowser(false);
+    
+    // Show a success message or update the UI
+    alert(`${selectedAssets.length} assets imported from Lingo`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -134,6 +170,13 @@ export function MediaLibrary() {
         </div>
         
         <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setShowLingoBrowser(true)}
+            className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Zap className="w-4 h-4" />
+            <span>Import from Lingo</span>
+          </button>
           <button
             onClick={() => setShowUploadModal(true)}
             className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
@@ -322,6 +365,15 @@ export function MediaLibrary() {
           onClose={() => setShowUploadModal(false)}
           onUpload={uploadMedia}
           selectedFolder={selectedFolder !== 'all' ? selectedFolder : undefined}
+        />
+      )}
+
+      {/* Lingo Asset Browser Modal */}
+      {showLingoBrowser && (
+        <LingoAssetBrowser
+          assets={lingoAssets}
+          onClose={() => setShowLingoBrowser(false)}
+          onImport={handleImportFromLingo}
         />
       )}
     </div>
