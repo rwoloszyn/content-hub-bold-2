@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Zap, Wand2, Copy, RefreshCw, Plus, Save, Calendar, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
+import { Zap, Wand2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { AITemplateSelector } from './AITemplateSelector';
 import { AIPromptBuilder } from './AIPromptBuilder';
 import { AIContentPreview } from './AIContentPreview';
