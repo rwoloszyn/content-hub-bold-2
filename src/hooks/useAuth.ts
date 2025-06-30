@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User } from '../types';
 import { analyticsService } from '../services/analyticsService';
+import { sentryService } from '../services/sentryService';
 import { supabase } from '../services/supabaseClient';
 
 interface AuthState {
@@ -35,6 +36,9 @@ export function useAuth() {
           // Set user in analytics service
           analyticsService.setUser(user);
           
+          // Set user in Sentry
+          sentryService.setUser(user);
+          
           return;
         }
         
@@ -68,6 +72,9 @@ export function useAuth() {
             // Set user in analytics service
             analyticsService.setUser(user);
             
+            // Set user in Sentry
+            sentryService.setUser(user);
+            
             return;
           }
         }
@@ -81,8 +88,13 @@ export function useAuth() {
         
         // Clear user in analytics service
         analyticsService.setUser(null);
+        
+        // Clear user in Sentry
+        sentryService.setUser(null);
       } catch (error) {
         console.error('Auth check failed:', error);
+        sentryService.captureException(error instanceof Error ? error : new Error(String(error)));
+        
         setAuthState({
           user: null,
           isAuthenticated: false,
@@ -91,6 +103,9 @@ export function useAuth() {
         
         // Clear user in analytics service
         analyticsService.setUser(null);
+        
+        // Clear user in Sentry
+        sentryService.setUser(null);
       }
     };
 
@@ -125,6 +140,7 @@ export function useAuth() {
                 
               if (insertError) {
                 console.error('Failed to create profile:', insertError);
+                sentryService.captureException(insertError);
               }
             }
             
@@ -151,6 +167,9 @@ export function useAuth() {
             // Set user in analytics service
             analyticsService.setUser(user);
             
+            // Set user in Sentry
+            sentryService.setUser(user);
+            
             // Track login event
             const provider = supabaseUser.app_metadata?.provider || 'email';
             analyticsService.trackLogin(provider);
@@ -164,6 +183,9 @@ export function useAuth() {
           
           // Clear user in analytics service
           analyticsService.setUser(null);
+          
+          // Clear user in Sentry
+          sentryService.setUser(null);
         } else if (event === 'USER_UPDATED') {
           // Refresh user data
           const { data: { user: supabaseUser } } = await supabase.auth.getUser();
@@ -191,6 +213,9 @@ export function useAuth() {
             
             // Update user in analytics service
             analyticsService.setUser(user);
+            
+            // Update user in Sentry
+            sentryService.setUser(user);
           }
         }
       }
@@ -204,6 +229,13 @@ export function useAuth() {
 
   const login = async (email: string, password: string): Promise<void> => {
     try {
+      // Add breadcrumb for login attempt
+      sentryService.addBreadcrumb({
+        category: 'auth',
+        message: 'Login attempt',
+        level: 'info',
+      });
+      
       // Try to sign in with Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -233,22 +265,36 @@ export function useAuth() {
           // Set user in analytics service
           analyticsService.setUser(user);
           
+          // Set user in Sentry
+          sentryService.setUser(user);
+          
           // Track login event
           analyticsService.trackLogin('email');
           
           return;
         }
         
+        // Log error to Sentry
+        sentryService.captureException(error);
+        
         throw error;
       }
     } catch (error) {
       console.error('Login failed:', error);
+      sentryService.captureException(error instanceof Error ? error : new Error(String(error)));
       throw new Error('Invalid email or password');
     }
   };
 
   const loginWithOAuth = async (provider: 'google' | 'facebook' | 'linkedin'): Promise<void> => {
     try {
+      // Add breadcrumb for OAuth login attempt
+      sentryService.addBreadcrumb({
+        category: 'auth',
+        message: `OAuth login attempt with ${provider}`,
+        level: 'info',
+      });
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -257,6 +303,8 @@ export function useAuth() {
       });
       
       if (error) {
+        // Log error to Sentry
+        sentryService.captureException(error);
         throw error;
       }
       
@@ -264,12 +312,20 @@ export function useAuth() {
       analyticsService.event('Auth', 'OAuth Login Attempt', provider);
     } catch (error) {
       console.error('OAuth login failed:', error);
+      sentryService.captureException(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   };
 
   const signup = async (email: string, password: string, name: string): Promise<void> => {
     try {
+      // Add breadcrumb for signup attempt
+      sentryService.addBreadcrumb({
+        category: 'auth',
+        message: 'Signup attempt',
+        level: 'info',
+      });
+      
       // Try to sign up with Supabase
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -282,6 +338,8 @@ export function useAuth() {
       });
       
       if (error) {
+        // Log error to Sentry
+        sentryService.captureException(error);
         throw error;
       }
       
@@ -289,12 +347,20 @@ export function useAuth() {
       analyticsService.trackSignup('email');
     } catch (error) {
       console.error('Signup failed:', error);
+      sentryService.captureException(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   };
 
   const logout = async (): Promise<void> => {
     try {
+      // Add breadcrumb for logout
+      sentryService.addBreadcrumb({
+        category: 'auth',
+        message: 'Logout',
+        level: 'info',
+      });
+      
       // Track logout event before clearing user
       analyticsService.event('User', 'Logout');
       
@@ -313,20 +379,33 @@ export function useAuth() {
       
       // Clear user in analytics service
       analyticsService.setUser(null);
+      
+      // Clear user in Sentry
+      sentryService.setUser(null);
     } catch (error) {
       console.error('Logout failed:', error);
+      sentryService.captureException(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   };
 
   const sendPasswordReset = async (email: string): Promise<void> => {
     try {
+      // Add breadcrumb for password reset request
+      sentryService.addBreadcrumb({
+        category: 'auth',
+        message: 'Password reset request',
+        level: 'info',
+      });
+      
       // Try to send password reset with Supabase
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       
       if (error) {
+        // Log error to Sentry
+        sentryService.captureException(error);
         throw error;
       }
       
@@ -334,6 +413,7 @@ export function useAuth() {
       analyticsService.event('User', 'Password Reset Request');
     } catch (error) {
       console.error('Password reset failed:', error);
+      sentryService.captureException(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   };

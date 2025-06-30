@@ -17,6 +17,7 @@ import { useAuth } from './hooks/useAuth';
 import { useContentData } from './hooks/useContentData';
 import { ContentItem, CalendarEvent, PlatformType } from './types';
 import { analyticsService } from './services/analyticsService';
+import { sentryService } from './services/sentryService';
 
 function App() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -39,6 +40,13 @@ function App() {
   useEffect(() => {
     if (isAuthenticated) {
       analyticsService.pageView(`/${activeTab}`);
+      
+      // Add breadcrumb for tab navigation
+      sentryService.addBreadcrumb({
+        category: 'navigation',
+        message: `Navigated to ${activeTab} tab`,
+        level: 'info'
+      });
     }
   }, [activeTab, isAuthenticated]);
 
@@ -68,11 +76,27 @@ function App() {
     setEditingContent(content);
     setShowContentEditor(true);
     analyticsService.event('Content', 'Edit', content.type);
+    
+    // Add breadcrumb for content editing
+    sentryService.addBreadcrumb({
+      category: 'content',
+      message: `Editing content: ${content.title}`,
+      data: { contentId: content.id, contentType: content.type },
+      level: 'info'
+    });
   };
 
   const handleDeleteContent = (id: string) => {
     if (window.confirm('Are you sure you want to delete this content?')) {
       deleteContentItem(id);
+      
+      // Add breadcrumb for content deletion
+      sentryService.addBreadcrumb({
+        category: 'content',
+        message: `Deleted content`,
+        data: { contentId: id },
+        level: 'info'
+      });
     }
   };
 
@@ -91,12 +115,28 @@ function App() {
     
     addContentItem(duplicate);
     analyticsService.event('Content', 'Duplicated', content.type);
+    
+    // Add breadcrumb for content duplication
+    sentryService.addBreadcrumb({
+      category: 'content',
+      message: `Duplicated content: ${content.title}`,
+      data: { sourceContentId: content.id, contentType: content.type },
+      level: 'info'
+    });
   };
 
   const handleScheduleContent = (content: ContentItem) => {
     setEditingContent(content);
     setShowContentEditor(true);
     analyticsService.event('Content', 'Schedule Initiated', content.type);
+    
+    // Add breadcrumb for schedule initiation
+    sentryService.addBreadcrumb({
+      category: 'content',
+      message: `Initiated scheduling for content: ${content.title}`,
+      data: { contentId: content.id, contentType: content.type },
+      level: 'info'
+    });
   };
 
   const handleEventClick = (event: CalendarEvent) => {
@@ -110,21 +150,51 @@ function App() {
     setEditingContent(null);
     setShowContentEditor(true);
     analyticsService.event('Calendar', 'Date Click', date.toISOString().split('T')[0]);
+    
+    // Add breadcrumb for calendar date click
+    sentryService.addBreadcrumb({
+      category: 'calendar',
+      message: `Clicked on calendar date: ${date.toISOString().split('T')[0]}`,
+      level: 'info'
+    });
   };
 
   const handleNewContent = () => {
     setEditingContent(null);
     setShowContentEditor(true);
     analyticsService.event('Content', 'New Content Initiated');
+    
+    // Add breadcrumb for new content
+    sentryService.addBreadcrumb({
+      category: 'content',
+      message: 'Initiated new content creation',
+      level: 'info'
+    });
   };
 
   const handleSaveContent = (contentData: Omit<ContentItem, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (editingContent) {
       updateContentItem(editingContent.id, contentData);
       analyticsService.event('Content', 'Updated', contentData.type);
+      
+      // Add breadcrumb for content update
+      sentryService.addBreadcrumb({
+        category: 'content',
+        message: `Updated content: ${contentData.title}`,
+        data: { contentId: editingContent.id, contentType: contentData.type },
+        level: 'info'
+      });
     } else {
       addContentItem(contentData);
       analyticsService.event('Content', 'Created', contentData.type);
+      
+      // Add breadcrumb for content creation
+      sentryService.addBreadcrumb({
+        category: 'content',
+        message: `Created new content: ${contentData.title}`,
+        data: { contentType: contentData.type },
+        level: 'info'
+      });
     }
     setShowContentEditor(false);
     setEditingContent(null);
@@ -138,29 +208,72 @@ function App() {
       platforms: platforms.map(type => ({ type, connected: true }))
     });
     analyticsService.event('Content', 'Scheduled', platforms.join(','));
+    
+    // Add breadcrumb for content scheduling
+    sentryService.addBreadcrumb({
+      category: 'content',
+      message: `Scheduled content: ${content.title}`,
+      data: { 
+        contentId: content.id, 
+        scheduledDate: date.toISOString(),
+        platforms: platforms.join(',')
+      },
+      level: 'info'
+    });
   };
 
   const handleUpdatePlatform = (platformType: PlatformType, updates: any) => {
     // Handle platform updates
     console.log('Update platform:', platformType, updates);
     analyticsService.event('Platform', 'Updated', platformType);
+    
+    // Add breadcrumb for platform update
+    sentryService.addBreadcrumb({
+      category: 'platform',
+      message: `Updated platform: ${platformType}`,
+      data: { platformType, updates },
+      level: 'info'
+    });
   };
 
   const handleConnectPlatform = async (platformType: PlatformType, credentials: any) => {
     // Handle platform connection
     console.log('Connect platform:', platformType, credentials);
     analyticsService.event('Platform', 'Connected', platformType);
+    
+    // Add breadcrumb for platform connection
+    sentryService.addBreadcrumb({
+      category: 'platform',
+      message: `Connected platform: ${platformType}`,
+      data: { platformType },
+      level: 'info'
+    });
   };
 
   const handleDisconnectPlatform = (platformType: PlatformType) => {
     // Handle platform disconnection
     console.log('Disconnect platform:', platformType);
     analyticsService.event('Platform', 'Disconnected', platformType);
+    
+    // Add breadcrumb for platform disconnection
+    sentryService.addBreadcrumb({
+      category: 'platform',
+      message: `Disconnected platform: ${platformType}`,
+      data: { platformType },
+      level: 'info'
+    });
   };
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     analyticsService.pageView(`/${tab}`);
+    
+    // Add breadcrumb for tab change
+    sentryService.addBreadcrumb({
+      category: 'navigation',
+      message: `Changed tab to: ${tab}`,
+      level: 'info'
+    });
   };
 
   const getTabTitle = () => {

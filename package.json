@@ -18,7 +18,9 @@
     "date-fns": "^3.6.0",
     "@supabase/supabase-js": "^2.39.7",
     "@supabase/auth-ui-react": "^0.4.7",
-    "@supabase/auth-ui-shared": "^0.1.8"
+    "@supabase/auth-ui-shared": "^0.1.8",
+    "@sentry/react": "^7.108.0",
+    "@sentry/vite-plugin": "^2.16.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
