@@ -171,6 +171,38 @@ class AnalyticsService {
     return { deviceType, browser, os };
   }
 
+  private async makeEdgeFunctionRequest(endpoint: string, data: any): Promise<boolean> {
+    if (!SUPABASE_URL) {
+      console.warn('SUPABASE_URL not configured, skipping edge function call');
+      return false;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/analytics${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken || ''}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Edge function request failed: ${response.status} ${response.statusText}`, errorText);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Edge function request error:', error);
+      return false;
+    }
+  }
+
   async pageView(path: string, title?: string): Promise<void> {
     if (!this.initialized) {
       this.initialize();
@@ -214,23 +246,33 @@ class AnalyticsService {
         };
         
         if (this.useEdgeFunction) {
-          // Use Edge Function - Fix: Properly await session and extract access token
-          const { data: { session } } = await supabase.auth.getSession();
-          const accessToken = session?.access_token;
+          // Try edge function first, fallback to direct call if it fails
+          const success = await this.makeEdgeFunctionRequest('/pageview', pageViewData);
           
-          await fetch(`${SUPABASE_URL}/functions/v1/analytics/pageview`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken || ''}`
-            },
-            body: JSON.stringify(pageViewData)
-          });
+          if (!success) {
+            console.warn('Edge function failed, falling back to direct Supabase call');
+            // Fallback to direct Supabase call
+            const { error } = await supabase
+              .from('page_views')
+              .insert({
+                ...pageViewData,
+                ip_address: null,
+                created_at: new Date().toISOString()
+              });
+              
+            if (error) {
+              console.error('Failed to track page view in Supabase:', error);
+            }
+          }
         } else {
           // Direct Supabase call
           const { error } = await supabase
             .from('page_views')
-            .insert(pageViewData);
+            .insert({
+              ...pageViewData,
+              ip_address: null,
+              created_at: new Date().toISOString()
+            });
             
           if (error) {
             console.error('Failed to track page view in Supabase:', error);
@@ -247,24 +289,41 @@ class AnalyticsService {
     
     try {
       if (this.useEdgeFunction) {
-        // Use Edge Function to update time on page - Fix: Properly await session and extract access token
-        const { data: { session } } = await supabase.auth.getSession();
-        const accessToken = session?.access_token;
-        
-        await fetch(`${SUPABASE_URL}/functions/v1/analytics/update-time`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken || ''}`
-          },
-          body: JSON.stringify({
-            session_id: this.sessionId,
-            page_url: pageUrl,
-            time_on_page: Math.floor(timeOnPage / 1000) // Convert to seconds
-          })
+        // Try edge function first, fallback to direct call if it fails
+        const success = await this.makeEdgeFunctionRequest('/update-time', {
+          session_id: this.sessionId,
+          page_url: pageUrl,
+          time_on_page: Math.floor(timeOnPage / 1000) // Convert to seconds
         });
+
+        if (!success) {
+          console.warn('Edge function failed for time tracking, falling back to direct Supabase call');
+          // Fallback to direct Supabase call
+          const { data, error } = await supabase
+            .from('page_views')
+            .select('id')
+            .eq('session_id', this.sessionId)
+            .eq('page_url', pageUrl)
+            .order('timestamp', { ascending: false })
+            .limit(1);
+            
+          if (error || !data || data.length === 0) {
+            console.error('Failed to find page view to update:', error);
+            return;
+          }
+          
+          // Update the page view with the time spent
+          const { error: updateError } = await supabase
+            .from('page_views')
+            .update({ time_on_page: Math.floor(timeOnPage / 1000) }) // Convert to seconds
+            .eq('id', data[0].id);
+            
+          if (updateError) {
+            console.error('Failed to update page view with time on page:', updateError);
+          }
+        }
       } else {
-        // Find the most recent page view for this URL and session
+        // Direct Supabase call
         const { data, error } = await supabase
           .from('page_views')
           .select('id')
@@ -341,23 +400,33 @@ class AnalyticsService {
         };
         
         if (this.useEdgeFunction) {
-          // Use Edge Function - Fix: Properly await session and extract access token
-          const { data: { session } } = await supabase.auth.getSession();
-          const accessToken = session?.access_token;
+          // Try edge function first, fallback to direct call if it fails
+          const success = await this.makeEdgeFunctionRequest('/event', eventData);
           
-          await fetch(`${SUPABASE_URL}/functions/v1/analytics/event`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken || ''}`
-            },
-            body: JSON.stringify(eventData)
-          });
+          if (!success) {
+            console.warn('Edge function failed, falling back to direct Supabase call');
+            // Fallback to direct Supabase call
+            const { error } = await supabase
+              .from('events')
+              .insert({
+                ...eventData,
+                ip_address: null,
+                created_at: new Date().toISOString()
+              });
+              
+            if (error) {
+              console.error('Failed to track event in Supabase:', error);
+            }
+          }
         } else {
           // Direct Supabase call
           const { error } = await supabase
             .from('events')
-            .insert(eventData);
+            .insert({
+              ...eventData,
+              ip_address: null,
+              created_at: new Date().toISOString()
+            });
             
           if (error) {
             console.error('Failed to track event in Supabase:', error);
@@ -438,23 +507,31 @@ class AnalyticsService {
         };
         
         if (this.useEdgeFunction) {
-          // Use Edge Function - Fix: Properly await session and extract access token
-          const { data: { session } } = await supabase.auth.getSession();
-          const accessToken = session?.access_token;
+          // Try edge function first, fallback to direct call if it fails
+          const success = await this.makeEdgeFunctionRequest('/purchase', purchaseData);
           
-          await fetch(`${SUPABASE_URL}/functions/v1/analytics/purchase`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken || ''}`
-            },
-            body: JSON.stringify(purchaseData)
-          });
+          if (!success) {
+            console.warn('Edge function failed, falling back to direct Supabase call');
+            // Fallback to direct Supabase call
+            const { error } = await supabase
+              .from('purchases')
+              .insert({
+                ...purchaseData,
+                created_at: new Date().toISOString()
+              });
+              
+            if (error) {
+              console.error('Failed to track purchase in Supabase:', error);
+            }
+          }
         } else {
           // Direct Supabase call
           const { error } = await supabase
             .from('purchases')
-            .insert(purchaseData);
+            .insert({
+              ...purchaseData,
+              created_at: new Date().toISOString()
+            });
             
           if (error) {
             console.error('Failed to track purchase in Supabase:', error);
@@ -484,22 +561,30 @@ class AnalyticsService {
     if (this.supabaseEnabled) {
       try {
         if (this.useEdgeFunction) {
-          // Use Edge Function - Fix: Properly await session and extract access token
-          const { data: { session } } = await supabase.auth.getSession();
-          const accessToken = session?.access_token;
-          
-          await fetch(`${SUPABASE_URL}/functions/v1/analytics/user-properties`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken || ''}`
-            },
-            body: JSON.stringify({
-              user_id: this.currentUser.id,
-              properties,
-              updated_at: new Date().toISOString()
-            })
+          // Try edge function first, fallback to direct call if it fails
+          const success = await this.makeEdgeFunctionRequest('/user-properties', {
+            user_id: this.currentUser.id,
+            properties,
+            updated_at: new Date().toISOString()
           });
+
+          if (!success) {
+            console.warn('Edge function failed, falling back to direct Supabase call');
+            // Fallback to direct Supabase call
+            const { error } = await supabase
+              .from('user_properties')
+              .upsert({
+                user_id: this.currentUser.id,
+                properties,
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'user_id'
+              });
+              
+            if (error) {
+              console.error('Failed to set user properties in Supabase:', error);
+            }
+          }
         } else {
           // Direct Supabase call
           const { error } = await supabase
