@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { AuthLayout } from './AuthLayout';
 import { 
   Auth,
-  ThemeSupa,
   OAuthProvider
 } from '@supabase/auth-ui-react';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '../../services/supabaseClient';
 import { analyticsService } from '../../services/analyticsService';
 
