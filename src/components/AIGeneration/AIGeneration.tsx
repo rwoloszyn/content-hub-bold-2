@@ -5,6 +5,8 @@ import { AIPromptBuilder } from './AIPromptBuilder';
 import { AIContentPreview } from './AIContentPreview';
 import { AIGenerationHistory } from './AIGenerationHistory';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
+import { useSubscription } from '../../hooks/useSubscription';
+import { UpgradePrompt } from '../UpgradePrompt';
 
 export function AIGeneration() {
   const [activeTab, setActiveTab] = useState<'templates' | 'custom' | 'history'>('templates');
@@ -23,7 +25,18 @@ export function AIGeneration() {
     loading
   } = useAIGeneration();
 
+  const { checkFeatureAccess, getFeatureLimit } = useSubscription();
+  const hasAIAccess = checkFeatureAccess('AI content generation');
+  const aiGenerationLimit = getFeatureLimit('aiGenerations');
+  const aiGenerationsUsed = 156; // This would come from your usage tracking
+
   const handleGenerate = async () => {
+    // Check if user has reached their AI generation limit
+    if (aiGenerationLimit !== -1 && aiGenerationsUsed >= aiGenerationLimit) {
+      // Show upgrade prompt or error message
+      return;
+    }
+    
     setIsGenerating(true);
     
     try {
@@ -129,6 +142,18 @@ export function AIGeneration() {
     return customPrompt.trim().length > 0;
   };
 
+  if (!hasAIAccess) {
+    return (
+      <div className="space-y-6">
+        <UpgradePrompt
+          feature="AI Content Generation"
+          description="Generate high-quality content with our advanced AI tools. Upgrade to Pro to unlock unlimited AI-powered content creation."
+          planRequired="pro"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -170,6 +195,34 @@ export function AIGeneration() {
           })}
         </div>
       </div>
+
+      {/* Usage Limit Banner */}
+      {aiGenerationLimit !== -1 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Zap className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="text-sm font-medium text-blue-900">
+                  AI Generation Usage: {aiGenerationsUsed} / {aiGenerationLimit}
+                </p>
+                <div className="w-48 bg-blue-200 rounded-full h-1.5 mt-1">
+                  <div 
+                    className="bg-blue-600 h-1.5 rounded-full" 
+                    style={{ width: `${Math.min((aiGenerationsUsed / aiGenerationLimit) * 100, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+            <button 
+              onClick={() => {}} 
+              className="text-sm text-blue-700 font-medium hover:text-blue-800"
+            >
+              Upgrade for more
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tab Content */}
       {activeTab === 'templates' && (

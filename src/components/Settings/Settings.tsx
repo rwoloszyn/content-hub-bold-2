@@ -29,7 +29,7 @@ import { NotificationSettings } from './NotificationSettings';
 import { SecuritySettings } from './SecuritySettings';
 import { AppearanceSettings } from './AppearanceSettings';
 import { LanguageSettings } from './LanguageSettings';
-import { BillingSettings } from './BillingSettings';
+import { SubscriptionSettings } from './SubscriptionSettings';
 import { DataSettings } from './DataSettings';
 import { IntegrationSettings } from './IntegrationSettings';
 import { SupportSettings } from './SupportSettings';
@@ -71,8 +71,8 @@ export function Settings() {
       description: 'Set your language, timezone, and regional preferences',
     },
     {
-      id: 'billing',
-      label: 'Billing & Plans',
+      id: 'subscription',
+      label: 'Subscription & Billing',
       icon: CreditCard,
       description: 'Manage your subscription and billing information',
     },
@@ -120,8 +120,8 @@ export function Settings() {
         return <AppearanceSettings onSettingsChange={() => setHasUnsavedChanges(true)} />;
       case 'language':
         return <LanguageSettings onSettingsChange={() => setHasUnsavedChanges(true)} />;
-      case 'billing':
-        return <BillingSettings />;
+      case 'subscription':
+        return <SubscriptionSettings />;
       case 'integrations':
         return <IntegrationSettings onSettingsChange={() => setHasUnsavedChanges(true)} />;
       case 'deployment':
@@ -182,7 +182,10 @@ export function Settings() {
                     <p className="text-xs text-gray-500">Active until Dec 2024</p>
                   </div>
                 </div>
-                <button className="w-full text-left text-sm text-primary-600 hover:text-primary-700 font-medium">
+                <button 
+                  onClick={() => setActiveTab('subscription')}
+                  className="w-full text-left text-sm text-primary-600 hover:text-primary-700 font-medium"
+                >
                   Manage subscription
                 </button>
               </div>
