@@ -9,6 +9,7 @@ import {
   Edit3,
   CheckCircle
 } from 'lucide-react';
+import { AI_MODELS } from '../../services/aiService';
 
 interface AIContentPreviewProps {
   content: string;
@@ -18,6 +19,7 @@ interface AIContentPreviewProps {
   onSchedule: () => void;
   onRegenerate: () => void;
   canRegenerate: boolean;
+  model: string;
 }
 
 export function AIContentPreview({
@@ -27,7 +29,8 @@ export function AIContentPreview({
   onSave,
   onSchedule,
   onRegenerate,
-  canRegenerate
+  canRegenerate,
+  model
 }: AIContentPreviewProps) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -47,6 +50,8 @@ export function AIContentPreview({
   const wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
   const charCount = content.length;
   const readingTime = Math.ceil(wordCount / 200); // Average reading speed
+
+  const modelInfo = AI_MODELS[model] || { name: 'AI Model', provider: 'Provider' };
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -88,6 +93,7 @@ export function AIContentPreview({
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
               <p className="text-gray-600 mb-2">Generating your content...</p>
               <p className="text-sm text-gray-500">This may take a few seconds</p>
+              <p className="text-xs text-gray-400 mt-2">Using {modelInfo.name} by {modelInfo.provider}</p>
             </div>
           </div>
         ) : content ? (
@@ -97,6 +103,9 @@ export function AIContentPreview({
               <span>{wordCount} words</span>
               <span>{charCount} characters</span>
               <span>{readingTime} min read</span>
+              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                {modelInfo.name}
+              </span>
             </div>
 
             {/* Content */}

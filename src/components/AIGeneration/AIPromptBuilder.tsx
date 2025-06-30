@@ -1,6 +1,7 @@
 import React from 'react';
 import { Zap, RefreshCw, Info } from 'lucide-react';
 import { AITemplate } from '../../types';
+import { AI_MODELS } from '../../services/aiService';
 
 interface AIPromptBuilderProps {
   template: AITemplate;
@@ -9,6 +10,7 @@ interface AIPromptBuilderProps {
   onGenerate: () => void;
   isGenerating: boolean;
   canGenerate: boolean;
+  selectedModel: string;
 }
 
 export function AIPromptBuilder({
@@ -17,7 +19,8 @@ export function AIPromptBuilder({
   onVariableChange,
   onGenerate,
   isGenerating,
-  canGenerate
+  canGenerate,
+  selectedModel
 }: AIPromptBuilderProps) {
   const getVariableLabel = (variable: string) => {
     return variable
@@ -44,6 +47,8 @@ export function AIPromptBuilder({
     const value = variables[key];
     return value ? `**${value}**` : `[${key}]`;
   });
+
+  const modelInfo = AI_MODELS[selectedModel] || { name: 'AI Model', provider: 'Provider' };
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -89,6 +94,12 @@ export function AIPromptBuilder({
                 .replace(/\[(.*?)\]/g, '<span class="text-gray-400 italic">[$1]</span>')
             }} />
           </div>
+        </div>
+
+        {/* Model Info */}
+        <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+          <span>Selected Model:</span>
+          <span className="font-medium">{modelInfo.name} by {modelInfo.provider}</span>
         </div>
 
         {/* Generate Button */}

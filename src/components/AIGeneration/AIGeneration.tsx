@@ -1,43 +1,50 @@
 import React, { useState } from 'react';
-import { Zap, Wand2, Copy, RefreshCw, Download, Plus, Save, Calendar } from 'lucide-react';
+import { Zap, Wand2, Copy, RefreshCw, Plus, Save, Calendar, AlertTriangle } from 'lucide-react';
 import { AITemplateSelector } from './AITemplateSelector';
 import { AIPromptBuilder } from './AIPromptBuilder';
 import { AIContentPreview } from './AIContentPreview';
 import { AIGenerationHistory } from './AIGenerationHistory';
+import { AIModelSelector } from './AIModelSelector';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useSubscription } from '../../hooks/useSubscription';
 import { UpgradePrompt } from '../UpgradePrompt';
 
 export function AIGeneration() {
-  const [activeTab, setActiveTab] = useState<'templates' | 'custom' | 'history'>('templates');
+  const [activeTab, setActiveTab] = useState<'templates' | 'custom' | 'history' | 'models'>('templates');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState('');
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [generatedContent, setGeneratedContent] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationHistory, setGenerationHistory] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     templates,
     generateContent,
     saveToLibrary,
     scheduleContent,
-    loading
+    loading,
+    generationHistory,
+    availableModels,
+    selectedModel,
+    changeModel,
+    hasAIAccess,
+    aiGenerationLimit
   } = useAIGeneration();
 
-  const { checkFeatureAccess, getFeatureLimit } = useSubscription();
+  const { checkFeatureAccess } = useSubscription();
   const hasAIAccess = checkFeatureAccess('AI content generation');
-  const aiGenerationLimit = getFeatureLimit('aiGenerations');
-  const aiGenerationsUsed = 156; // This would come from your usage tracking
+  const aiGenerationsUsed = generationHistory.length; // This would come from your usage tracking
 
   const handleGenerate = async () => {
     // Check if user has reached their AI generation limit
     if (aiGenerationLimit !== -1 && aiGenerationsUsed >= aiGenerationLimit) {
-      // Show upgrade prompt or error message
+      setError(`You've reached your limit of ${aiGenerationLimit} AI generations. Please upgrade your plan for unlimited generations.`);
       return;
     }
     
     setIsGenerating(true);
+    setError(null);
     
     try {
       let prompt = '';
@@ -58,22 +65,9 @@ export function AIGeneration() {
       });
       
       setGeneratedContent(result.content);
-      
-      // Add to history
-      const historyItem = {
-        id: Date.now().toString(),
-        content: result.content,
-        prompt,
-        template: selectedTemplate,
-        variables: { ...variables },
-        createdAt: new Date(),
-        type: activeTab
-      };
-      
-      setGenerationHistory(prev => [historyItem, ...prev]);
-      
     } catch (error) {
       console.error('Generation failed:', error);
+      setError(error.message || 'Failed to generate content. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -107,6 +101,7 @@ export function AIGeneration() {
       console.log('Content saved to library');
     } catch (error) {
       console.error('Failed to save content:', error);
+      setError('Failed to save content to library. Please try again.');
     }
   };
 
@@ -131,6 +126,11 @@ export function AIGeneration() {
       setVariables(newVariables);
     }
     setGeneratedContent('');
+    setError(null);
+  };
+
+  const handleModelChange = (model: string) => {
+    changeModel(model);
   };
 
   const canGenerate = () => {
@@ -176,6 +176,7 @@ export function AIGeneration() {
             { id: 'templates', label: 'Templates', icon: Wand2 },
             { id: 'custom', label: 'Custom Prompt', icon: Zap },
             { id: 'history', label: 'History', icon: RefreshCw },
+            { id: 'models', label: 'AI Models', icon: Zap },
           ].map((tab) => {
             const Icon = tab.icon;
             return (
@@ -195,6 +196,17 @@ export function AIGeneration() {
           })}
         </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start space-x-3">
+          <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <h3 className="font-medium text-red-800 mb-1">Error</h3>
+            <p className="text-red-700">{error}</p>
+          </div>
+        </div>
+      )}
 
       {/* Usage Limit Banner */}
       {aiGenerationLimit !== -1 && (
@@ -243,6 +255,7 @@ export function AIGeneration() {
                 onGenerate={handleGenerate}
                 isGenerating={isGenerating}
                 canGenerate={canGenerate()}
+                selectedModel={selectedModel}
               />
             )}
           </div>
@@ -256,6 +269,7 @@ export function AIGeneration() {
             onSchedule={handleScheduleContent}
             onRegenerate={handleGenerate}
             canRegenerate={canGenerate()}
+            model={selectedModel}
           />
         </div>
       )}
@@ -306,6 +320,11 @@ export function AIGeneration() {
                 </div>
               </div>
 
+              <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                <span>Selected Model:</span>
+                <span className="font-medium">{availableModels[selectedModel].name}</span>
+              </div>
+
               <button
                 onClick={handleGenerate}
                 disabled={!canGenerate() || isGenerating}
@@ -339,6 +358,7 @@ export function AIGeneration() {
             onSchedule={handleScheduleContent}
             onRegenerate={handleGenerate}
             canRegenerate={canGenerate()}
+            model={selectedModel}
           />
         </div>
       )}
@@ -358,6 +378,14 @@ export function AIGeneration() {
             setGeneratedContent(item.content);
           }}
           onSave={handleSaveToLibrary}
+          availableModels={availableModels}
+        />
+      )}
+
+      {activeTab === 'models' && (
+        <AIModelSelector
+          selectedModel={selectedModel}
+          onModelChange={handleModelChange}
         />
       )}
 
@@ -366,7 +394,7 @@ export function AIGeneration() {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Usage Statistics</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <div className="text-2xl font-bold text-purple-600">47</div>
+            <div className="text-2xl font-bold text-purple-600">{generationHistory.length}</div>
             <div className="text-sm text-gray-600">Content Generated</div>
           </div>
           <div className="text-center p-4 bg-green-50 rounded-lg">

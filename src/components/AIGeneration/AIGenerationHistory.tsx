@@ -11,6 +11,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { AI_MODELS } from '../../services/aiService';
 
 interface HistoryItem {
   id: string;
@@ -20,32 +21,52 @@ interface HistoryItem {
   variables: Record<string, string>;
   createdAt: Date;
   type: 'templates' | 'custom';
+  model: string;
+  provider: string;
 }
 
 interface AIGenerationHistoryProps {
   history: HistoryItem[];
   onReuse: (item: HistoryItem) => void;
   onSave: (content: string) => void;
+  availableModels: typeof AI_MODELS;
 }
 
 export function AIGenerationHistory({ 
   history, 
   onReuse, 
-  onSave 
+  onSave,
+  availableModels
 }: AIGenerationHistoryProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'templates' | 'custom'>('all');
+  const [filterModel, setFilterModel] = useState<string>('all');
   const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
 
   const filteredHistory = history.filter(item => {
     const matchesSearch = item.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.prompt.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === 'all' || item.type === filterType;
-    return matchesSearch && matchesType;
+    const matchesModel = filterModel === 'all' || item.model === filterModel;
+    return matchesSearch && matchesType && matchesModel;
   });
 
   const handleCopy = (content: string) => {
     navigator.clipboard.writeText(content);
+  };
+
+  const getModelBadgeColor = (model: string) => {
+    const provider = availableModels[model]?.provider || '';
+    switch (provider) {
+      case 'Google':
+        return 'bg-blue-100 text-blue-700';
+      case 'OpenAI':
+        return 'bg-green-100 text-green-700';
+      case 'Anthropic':
+        return 'bg-purple-100 text-purple-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
   };
 
   return (
@@ -75,6 +96,17 @@ export function AIGenerationHistory({
               <option value="templates">Templates</option>
               <option value="custom">Custom Prompts</option>
             </select>
+            
+            <select
+              value={filterModel}
+              onChange={(e) => setFilterModel(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            >
+              <option value="all">All Models</option>
+              {Object.entries(availableModels).map(([id, model]) => (
+                <option key={id} value={id}>{model.name}</option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -90,7 +122,7 @@ export function AIGenerationHistory({
             <Clock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No History Found</h3>
             <p className="text-gray-600">
-              {searchQuery || filterType !== 'all' 
+              {searchQuery || filterType !== 'all' || filterModel !== 'all'
                 ? 'Try adjusting your search or filters'
                 : 'Start generating content to see your history here'}
             </p>
@@ -107,6 +139,9 @@ export function AIGenerationHistory({
                         : 'bg-purple-100 text-purple-700'
                     }`}>
                       {item.type === 'templates' ? 'Template' : 'Custom'}
+                    </span>
+                    <span className={`px-2 py-1 text-xs rounded-full ${getModelBadgeColor(item.model)}`}>
+                      {availableModels[item.model]?.name || item.model}
                     </span>
                     <span className="text-sm text-gray-500">
                       {format(item.createdAt, 'MMM d, yyyy • h:mm a')}
@@ -206,6 +241,18 @@ export function AIGenerationHistory({
                   <h4 className="font-medium text-gray-900 mb-2">Original Prompt</h4>
                   <div className="bg-blue-50 rounded-lg p-4">
                     <p className="text-blue-700 text-sm">{selectedItem.prompt}</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Model Information</h4>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-gray-700 text-sm">
+                      <span className="font-medium">Model:</span> {availableModels[selectedItem.model]?.name || selectedItem.model}
+                    </p>
+                    <p className="text-gray-700 text-sm">
+                      <span className="font-medium">Provider:</span> {availableModels[selectedItem.model]?.provider || selectedItem.provider}
+                    </p>
                   </div>
                 </div>
                 

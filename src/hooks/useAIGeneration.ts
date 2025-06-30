@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
 import { AITemplate, ContentItem } from '../types';
+import { aiService, AI_MODELS } from '../services/aiService';
+import { analyticsService } from '../services/analyticsService';
+import { sentryService } from '../services/sentryService';
+import { useSubscription } from './useSubscription';
 
 const mockTemplates: AITemplate[] = [
   {
@@ -71,6 +75,14 @@ const mockTemplates: AITemplate[] = [
 export function useAIGeneration() {
   const [templates, setTemplates] = useState<AITemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generationHistory, setGenerationHistory] = useState<any[]>([]);
+  const [availableModels, setAvailableModels] = useState<typeof AI_MODELS>(AI_MODELS);
+  const [selectedModel, setSelectedModel] = useState<string>(aiService.getDefaultModel());
+  const [error, setError] = useState<string | null>(null);
+  
+  const { checkFeatureAccess, getFeatureLimit } = useSubscription();
+  const hasAIAccess = checkFeatureAccess('AI content generation');
+  const aiGenerationLimit = getFeatureLimit('aiGenerations');
 
   useEffect(() => {
     // Simulate API call to load templates
@@ -82,89 +94,122 @@ export function useAIGeneration() {
     };
 
     loadTemplates();
+    
+    // Load generation history from local storage
+    const savedHistory = localStorage.getItem('ai_generation_history');
+    if (savedHistory) {
+      try {
+        const parsedHistory = JSON.parse(savedHistory);
+        // Convert string dates back to Date objects
+        const historyWithDates = parsedHistory.map((item: any) => ({
+          ...item,
+          createdAt: new Date(item.createdAt)
+        }));
+        setGenerationHistory(historyWithDates);
+      } catch (error) {
+        console.error('Failed to parse generation history:', error);
+        sentryService.captureException(error);
+      }
+    }
+    
+    // Load selected model from local storage
+    const savedModel = localStorage.getItem('ai_selected_model');
+    if (savedModel && AI_MODELS[savedModel]) {
+      setSelectedModel(savedModel);
+      aiService.setDefaultModel(savedModel);
+    }
   }, []);
 
   const generateContent = async (prompt: string, options?: any) => {
-    // Simulate AI generation
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    setError(null);
     
-    // Mock generated content based on prompt
-    let mockContent = '';
-    
-    if (prompt.includes('social media post')) {
-      mockContent = `🚀 Exciting news about ${options?.variables?.topic || 'innovation'}! 
-
-Did you know that innovative approaches to ${options?.variables?.topic || 'this topic'} can transform your entire strategy? Here are 3 key insights that will change how you think about this:
-
-✨ Focus on user experience first
-📊 Data-driven decisions lead to better outcomes  
-🎯 Consistency builds trust and recognition
-
-What's your experience with ${options?.variables?.topic || 'this topic'}? Share your thoughts below! 👇
-
-#${options?.variables?.topic?.replace(/\s+/g, '') || 'Innovation'} #ContentMarketing #DigitalStrategy #GrowthHacking`;
-    } else if (prompt.includes('blog introduction')) {
-      mockContent = `In today's rapidly evolving digital landscape, ${options?.variables?.topic || 'this topic'} has become more crucial than ever before. Whether you're a seasoned professional or just starting your journey, understanding the nuances of ${options?.variables?.topic || 'this subject'} can be the difference between success and falling behind the competition.
-
-This comprehensive guide will walk you through everything you need to know about ${options?.variables?.topic || 'this topic'}, from fundamental concepts to advanced strategies that industry leaders are using to stay ahead. By the end of this article, you'll have a clear roadmap for implementing these insights in your own work.
-
-Let's dive into the transformative world of ${options?.variables?.topic || 'this subject'} and discover how you can leverage these powerful techniques to achieve remarkable results.`;
-    } else if (prompt.includes('product description')) {
-      mockContent = `Introducing the ${options?.variables?.product || 'revolutionary product'} – the perfect solution for ${options?.variables?.audience || 'modern consumers'} who demand quality and innovation.
-
-**Key Features:**
-${options?.variables?.features || 'Premium materials, innovative design, user-friendly interface'}
-
-**Why Choose This Product?**
-• Designed specifically for ${options?.variables?.audience || 'your needs'}
-• Backed by extensive research and development
-• Proven results with thousands of satisfied customers
-• 30-day money-back guarantee
-
-Don't settle for ordinary. Experience the difference that quality makes. Order your ${options?.variables?.product || 'product'} today and join the thousands of customers who have already transformed their experience.
-
-**Limited Time Offer:** Get 20% off your first order with code SAVE20. Order now!`;
-    } else if (prompt.includes('email subject')) {
-      mockContent = `Here are 5 compelling email subject lines for your ${options?.variables?.topic || 'campaign'}:
-
-1. "🔥 Don't Miss Out: ${options?.variables?.topic || 'Exclusive Offer'} Inside"
-2. "Last Chance: ${options?.variables?.topic || 'Special Deal'} Ends Tonight"
-3. "You're Invited: Exclusive ${options?.variables?.topic || 'Event'} for VIP Members"
-4. "Breaking: New ${options?.variables?.topic || 'Innovation'} Changes Everything"
-5. "Quick Question About Your ${options?.variables?.topic || 'Goals'}..."
-
-Each subject line is designed to increase open rates by creating urgency, curiosity, or personal connection with your ${options?.variables?.audience || 'target audience'}.`;
-    } else {
-      // Generic content for custom prompts
-      mockContent = `Based on your prompt, here's the generated content:
-
-${prompt.substring(0, 100)}...
-
-This content has been crafted to meet your specific requirements while maintaining engagement and clarity. The AI has analyzed your prompt and generated content that balances creativity with your stated objectives.
-
-Key elements included:
-• Clear and engaging opening
-• Structured information flow
-• Call-to-action elements
-• Audience-appropriate tone
-
-Feel free to regenerate or modify this content to better suit your needs.`;
-    }
-
-    return {
-      content: mockContent,
-      metadata: {
-        wordCount: mockContent.split(/\s+/).length,
-        charCount: mockContent.length,
-        tone: options?.variables?.tone || 'professional',
-        readingTime: Math.ceil(mockContent.split(/\s+/).length / 200)
+    try {
+      // Check if user has reached their AI generation limit
+      if (aiGenerationLimit !== -1) {
+        const usedGenerations = generationHistory.length;
+        if (usedGenerations >= aiGenerationLimit) {
+          throw new Error(`You've reached your limit of ${aiGenerationLimit} AI generations. Please upgrade your plan for unlimited generations.`);
+        }
       }
-    };
+      
+      // Add breadcrumb for content generation
+      sentryService.addBreadcrumb({
+        category: 'ai',
+        message: 'Generating content',
+        data: {
+          template: options?.template,
+          model: selectedModel,
+        },
+        level: 'info'
+      });
+      
+      // Prepare the generation request
+      const request = {
+        prompt,
+        model: selectedModel,
+        maxTokens: 1024,
+        temperature: 0.7,
+        topP: 0.95,
+        topK: 40,
+        images: options?.images || [],
+      };
+      
+      // Call the AI service
+      const result = await aiService.generateContent(request);
+      
+      // Track successful generation
+      analyticsService.event('AI', 'Content Generated', selectedModel);
+      
+      // Add to history
+      const historyItem = {
+        id: Date.now().toString(),
+        content: result.content,
+        prompt,
+        template: options?.template,
+        variables: options?.variables ? { ...options.variables } : {},
+        model: selectedModel,
+        provider: result.provider,
+        createdAt: new Date(),
+        type: options?.type || 'custom'
+      };
+      
+      const updatedHistory = [historyItem, ...generationHistory];
+      setGenerationHistory(updatedHistory);
+      
+      // Save to local storage (limit to last 50 items to prevent storage issues)
+      localStorage.setItem('ai_generation_history', JSON.stringify(updatedHistory.slice(0, 50)));
+      
+      return {
+        content: result.content,
+        metadata: {
+          wordCount: result.content.split(/\s+/).length,
+          charCount: result.content.length,
+          model: result.model,
+          provider: result.provider,
+          usage: result.usage,
+        }
+      };
+    } catch (error) {
+      console.error('Generation failed:', error);
+      setError(error.message || 'Failed to generate content');
+      
+      // Log error to Sentry
+      sentryService.captureException(error);
+      
+      // Track failed generation
+      analyticsService.event('AI', 'Generation Error', error.message);
+      
+      throw error;
+    }
   };
 
   const saveToLibrary = async (contentData: Omit<ContentItem, 'id' | 'createdAt' | 'updatedAt'>) => {
     // This would integrate with the content management system
     console.log('Saving to library:', contentData);
+    
+    // Track save to library event
+    analyticsService.event('AI', 'Saved to Library');
+    
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     return { success: true };
@@ -173,9 +218,28 @@ Feel free to regenerate or modify this content to better suit your needs.`;
   const scheduleContent = async (content: string, scheduleData: any) => {
     // This would integrate with the scheduling system
     console.log('Scheduling content:', { content, scheduleData });
+    
+    // Track schedule event
+    analyticsService.event('AI', 'Scheduled Content');
+    
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     return { success: true };
+  };
+  
+  const changeModel = (model: string) => {
+    if (AI_MODELS[model]) {
+      setSelectedModel(model);
+      aiService.setDefaultModel(model);
+      localStorage.setItem('ai_selected_model', model);
+      return true;
+    }
+    return false;
+  };
+  
+  const clearHistory = () => {
+    setGenerationHistory([]);
+    localStorage.removeItem('ai_generation_history');
   };
 
   return {
@@ -184,5 +248,13 @@ Feel free to regenerate or modify this content to better suit your needs.`;
     generateContent,
     saveToLibrary,
     scheduleContent,
+    generationHistory,
+    availableModels,
+    selectedModel,
+    changeModel,
+    clearHistory,
+    error,
+    hasAIAccess,
+    aiGenerationLimit,
   };
 }
