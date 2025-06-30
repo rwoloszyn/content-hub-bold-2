@@ -1,0 +1,32 @@
+# Netlify configuration file
+
+[build]
+  # Directory to publish (relative to root of your repo)
+  publish = "dist"
+  
+  # Default build command
+  command = "npm run build"
+
+# Redirects and rewrites
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Environment variables
+[build.environment]
+  NODE_VERSION = "18"
+
+# Build plugins
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+
+# Headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.pexels.com https://ui-avatars.com https://lh3.googleusercontent.com https://graph.facebook.com https://media.licdn.com; connect-src 'self' https://accounts.google.com https://www.facebook.com https://www.linkedin.com;"
