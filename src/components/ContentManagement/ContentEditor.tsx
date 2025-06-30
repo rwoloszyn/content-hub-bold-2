@@ -18,7 +18,7 @@ import { MediaSelector } from './MediaSelector';
 import { ScheduleModal } from './ScheduleModal';
 
 interface ContentEditorProps {
-  content?: ContentItem;
+  content: ContentItem | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: (content: Omit<ContentItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
