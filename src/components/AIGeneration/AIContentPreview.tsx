@@ -5,7 +5,6 @@ import {
   Calendar, 
   RefreshCw, 
   Zap, 
-  Eye,
   Edit3,
   CheckCircle
 } from 'lucide-react';
@@ -19,7 +18,7 @@ interface AIContentPreviewProps {
   onSchedule: () => void;
   onRegenerate: () => void;
   canRegenerate: boolean;
-  model: string;
+  model: keyof typeof AI_MODELS;
 }
 
 export function AIContentPreview({
