@@ -34,6 +34,7 @@ import { DataSettings } from './DataSettings';
 import { IntegrationSettings } from './IntegrationSettings';
 import { SupportSettings } from './SupportSettings';
 import { DeploymentSettings } from './DeploymentSettings';
+import { DomainSettings } from './DomainSettings';
 
 export function Settings() {
   const [activeTab, setActiveTab] = useState<string>('profile');
@@ -89,6 +90,12 @@ export function Settings() {
       description: 'Deploy and manage your ContentHub instance',
     },
     {
+      id: 'domains',
+      label: 'Domains',
+      icon: Globe,
+      description: 'Manage custom domains for your site',
+    },
+    {
       id: 'data',
       label: 'Data & Privacy',
       icon: Database,
@@ -126,6 +133,8 @@ export function Settings() {
         return <IntegrationSettings onSettingsChange={() => setHasUnsavedChanges(true)} />;
       case 'deployment':
         return <DeploymentSettings />;
+      case 'domains':
+        return <DomainSettings />;
       case 'data':
         return <DataSettings />;
       case 'support':
