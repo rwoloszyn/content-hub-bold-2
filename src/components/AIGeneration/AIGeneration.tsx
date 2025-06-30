@@ -33,7 +33,6 @@ export function AIGeneration() {
   } = useAIGeneration();
 
   const { checkFeatureAccess } = useSubscription();
-  const hasAIAccess = checkFeatureAccess('AI content generation');
   const aiGenerationsUsed = generationHistory.length; // This would come from your usage tracking
 
   const handleGenerate = async () => {
