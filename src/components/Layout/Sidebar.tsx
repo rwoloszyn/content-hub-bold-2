@@ -81,19 +81,6 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           </ul>
         </nav>
         
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center space-x-3">
-            <img
-              src="https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&fit=crop"
-              alt="Profile"
-              className="w-8 h-8 rounded-full"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">Sarah Johnson</p>
-              <p className="text-xs text-gray-500 truncate">Pro Plan</p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
