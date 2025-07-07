@@ -416,7 +416,11 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
+      <Sidebar 
+        activeTab={activeTab} 
+        onTabChange={handleTabChange} 
+        onNewPost={handleNewContent}
+      />
       
       <div className="flex-1 ml-64">
         <Header 
