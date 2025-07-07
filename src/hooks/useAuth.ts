@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { User } from '../types';
 import { analyticsService } from '../services/analyticsService';
 import { sentryService } from '../services/sentryService';
-import { supabase } from '../services/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 
 interface AuthState {
   user: User | null;
@@ -42,40 +42,43 @@ export function useAuth() {
           return;
         }
         
-        // Then check Supabase session
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+        // Only try Supabase if it's properly configured
+        if (isSupabaseConfigured) {
+          // Then check Supabase session
+          const { data: { session } } = await supabase.auth.getSession();
           
-          if (supabaseUser) {
-            // Get user profile data
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', supabaseUser.id)
-              .single();
+          if (session) {
+            const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+            
+            if (supabaseUser) {
+              // Get user profile data
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', supabaseUser.id)
+                .single();
+                
+              const user: User = {
+                id: supabaseUser.id,
+                name: profileData?.name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+                email: supabaseUser.email || '',
+                avatar: profileData?.avatar_url || supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
+              };
               
-            const user: User = {
-              id: supabaseUser.id,
-              name: profileData?.name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
-              email: supabaseUser.email || '',
-              avatar: profileData?.avatar_url || supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
-            };
-            
-            setAuthState({
-              user,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-            
-            // Set user in analytics service
-            analyticsService.setUser(user);
-            
-            // Set user in Sentry
-            sentryService.setUser(user);
-            
-            return;
+              setAuthState({
+                user,
+                isAuthenticated: true,
+                isLoading: false,
+              });
+              
+              // Set user in analytics service
+              analyticsService.setUser(user);
+              
+              // Set user in Sentry
+              sentryService.setUser(user);
+              
+              return;
+            }
           }
         }
         
@@ -111,120 +114,123 @@ export function useAuth() {
 
     checkAuth();
     
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event);
-        
-        if (event === 'SIGNED_IN' && session) {
-          const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+    // Only set up auth state change listener if Supabase is configured
+    if (isSupabaseConfigured) {
+      // Set up auth state change listener
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          console.log('Auth state changed:', event);
           
-          if (supabaseUser) {
-            // Check if profile exists
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', supabaseUser.id)
-              .single();
-              
-            // If profile doesn't exist, create it
-            if (profileError || !profileData) {
-              const { error: insertError } = await supabase
+          if (event === 'SIGNED_IN' && session) {
+            const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+            
+            if (supabaseUser) {
+              // Check if profile exists
+              const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
-                .insert({
-                  id: supabaseUser.id,
-                  name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
-                  email: supabaseUser.email,
-                  avatar_url: supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
-                });
+                .select('*')
+                .eq('id', supabaseUser.id)
+                .single();
                 
-              if (insertError) {
-                console.error('Failed to create profile:', insertError);
-                sentryService.captureException(insertError);
+              // If profile doesn't exist, create it
+              if (profileError || !profileData) {
+                const { error: insertError } = await supabase
+                  .from('profiles')
+                  .insert({
+                    id: supabaseUser.id,
+                    name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+                    email: supabaseUser.email,
+                    avatar_url: supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
+                  });
+                  
+                if (insertError) {
+                  console.error('Failed to create profile:', insertError);
+                  sentryService.captureException(insertError);
+                }
               }
+              
+              // Get updated profile data
+              const { data: updatedProfile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', supabaseUser.id)
+                .single();
+                
+              const user: User = {
+                id: supabaseUser.id,
+                name: updatedProfile?.name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+                email: supabaseUser.email || '',
+                avatar: updatedProfile?.avatar_url || supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
+              };
+              
+              setAuthState({
+                user,
+                isAuthenticated: true,
+                isLoading: false,
+              });
+              
+              // Set user in analytics service
+              analyticsService.setUser(user);
+              
+              // Set user in Sentry
+              sentryService.setUser(user);
+              
+              // Track login event
+              const provider = supabaseUser.app_metadata?.provider || 'email';
+              analyticsService.trackLogin(provider);
             }
-            
-            // Get updated profile data
-            const { data: updatedProfile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', supabaseUser.id)
-              .single();
-              
-            const user: User = {
-              id: supabaseUser.id,
-              name: updatedProfile?.name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
-              email: supabaseUser.email || '',
-              avatar: updatedProfile?.avatar_url || supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
-            };
-            
+          } else if (event === 'SIGNED_OUT') {
             setAuthState({
-              user,
-              isAuthenticated: true,
+              user: null,
+              isAuthenticated: false,
               isLoading: false,
             });
             
-            // Set user in analytics service
-            analyticsService.setUser(user);
+            // Clear user in analytics service
+            analyticsService.setUser(null);
             
-            // Set user in Sentry
-            sentryService.setUser(user);
+            // Clear user in Sentry
+            sentryService.setUser(null);
+          } else if (event === 'USER_UPDATED') {
+            // Refresh user data
+            const { data: { user: supabaseUser } } = await supabase.auth.getUser();
             
-            // Track login event
-            const provider = supabaseUser.app_metadata?.provider || 'email';
-            analyticsService.trackLogin(provider);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setAuthState({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
-          
-          // Clear user in analytics service
-          analyticsService.setUser(null);
-          
-          // Clear user in Sentry
-          sentryService.setUser(null);
-        } else if (event === 'USER_UPDATED') {
-          // Refresh user data
-          const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-          
-          if (supabaseUser) {
-            // Get updated profile data
-            const { data: updatedProfile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', supabaseUser.id)
-              .single();
+            if (supabaseUser) {
+              // Get updated profile data
+              const { data: updatedProfile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', supabaseUser.id)
+                .single();
+                
+              const user: User = {
+                id: supabaseUser.id,
+                name: updatedProfile?.name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+                email: supabaseUser.email || '',
+                avatar: updatedProfile?.avatar_url || supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
+              };
               
-            const user: User = {
-              id: supabaseUser.id,
-              name: updatedProfile?.name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
-              email: supabaseUser.email || '',
-              avatar: updatedProfile?.avatar_url || supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=3b82f6&color=fff`,
-            };
-            
-            setAuthState({
-              user,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-            
-            // Update user in analytics service
-            analyticsService.setUser(user);
-            
-            // Update user in Sentry
-            sentryService.setUser(user);
+              setAuthState({
+                user,
+                isAuthenticated: true,
+                isLoading: false,
+              });
+              
+              // Update user in analytics service
+              analyticsService.setUser(user);
+              
+              // Update user in Sentry
+              sentryService.setUser(user);
+            }
           }
         }
-      }
-    );
-    
-    // Cleanup subscription
-    return () => {
-      subscription.unsubscribe();
-    };
+      );
+      
+      // Cleanup subscription
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
@@ -236,53 +242,57 @@ export function useAuth() {
         level: 'info',
       });
       
-      // Try to sign in with Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (error) {
-        // Fall back to mock authentication for demo
-        if (email === 'demo@skaldora.com' && password === 'password') {
-          const user: User = {
-            id: 'user-1',
-            name: 'Sarah Johnson',
-            email: email,
-            avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-          };
-          
-          // Store auth data
-          localStorage.setItem('auth_token', 'mock_token_123');
-          localStorage.setItem('user_data', JSON.stringify(user));
-          
-          setAuthState({
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-          });
+      // Check for demo account first
+      if (email === 'demo@contenthub.com' && password === 'password') {
+        const user: User = {
+          id: 'user-1',
+          name: 'Sarah Johnson',
+          email: email,
+          avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
+        };
+        
+        // Store auth data
+        localStorage.setItem('auth_token', 'mock_token_123');
+        localStorage.setItem('user_data', JSON.stringify(user));
+        
+        setAuthState({
+          user,
+          isAuthenticated: true,
+          isLoading: false,
+        });
 
-          // Set user in analytics service
-          analyticsService.setUser(user);
-          
-          // Set user in Sentry
-          sentryService.setUser(user);
-          
-          // Track login event
-          analyticsService.trackLogin('email');
-          
-          return;
+        // Set user in analytics service
+        analyticsService.setUser(user);
+        
+        // Set user in Sentry
+        sentryService.setUser(user);
+        
+        // Track login event
+        analyticsService.trackLogin('email');
+        
+        return;
+      }
+      
+      // Try Supabase authentication only if configured
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (error) {
+          // Log error to Sentry
+          sentryService.captureException(error);
+          throw error;
         }
-        
-        // Log error to Sentry
-        sentryService.captureException(error);
-        
-        throw error;
+      } else {
+        // If Supabase is not configured, show helpful error
+        throw new Error('Please use the demo account: demo@contenthub.com / password');
       }
     } catch (error) {
       console.error('Login failed:', error);
       sentryService.captureException(error instanceof Error ? error : new Error(String(error)));
-      throw new Error('Invalid email or password');
+      throw error;
     }
   };
 
@@ -294,6 +304,11 @@ export function useAuth() {
         message: `OAuth login attempt with ${provider}`,
         level: 'info',
       });
+      
+      // Only attempt OAuth if Supabase is configured
+      if (!isSupabaseConfigured) {
+        throw new Error('OAuth login requires Supabase configuration. Please use the demo account.');
+      }
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -325,6 +340,11 @@ export function useAuth() {
         message: 'Signup attempt',
         level: 'info',
       });
+      
+      // Only attempt signup if Supabase is configured
+      if (!isSupabaseConfigured) {
+        throw new Error('Signup requires Supabase configuration. Please use the demo account to test the app.');
+      }
       
       // Try to sign up with Supabase
       const { data, error } = await supabase.auth.signUp({
@@ -364,8 +384,10 @@ export function useAuth() {
       // Track logout event before clearing user
       analyticsService.event('User', 'Logout');
       
-      // Sign out from Supabase
-      await supabase.auth.signOut();
+      // Sign out from Supabase if configured
+      if (isSupabaseConfigured) {
+        await supabase.auth.signOut();
+      }
       
       // Clear local storage
       localStorage.removeItem('auth_token');
@@ -397,6 +419,11 @@ export function useAuth() {
         message: 'Password reset request',
         level: 'info',
       });
+      
+      // Only attempt password reset if Supabase is configured
+      if (!isSupabaseConfigured) {
+        throw new Error('Password reset requires Supabase configuration. Please use the demo account.');
+      }
       
       // Try to send password reset with Supabase
       const { error } = await supabase.auth.resetPasswordForEmail(email, {

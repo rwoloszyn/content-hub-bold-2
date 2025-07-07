@@ -15,6 +15,7 @@ import {
 import { AuthLayout } from './AuthLayout';
 import { OAuthButtons } from './OAuthButtons';
 import { useAuth } from '../../hooks/useAuth';
+import { isSupabaseConfigured } from '../../services/supabaseClient';
 
 interface SignupFormProps {
   onSignup: (email: string, password: string, name: string) => Promise<void>;
@@ -47,6 +48,12 @@ export function SignupForm({ onSignup, onOAuthLogin, onSwitchToLogin }: SignupFo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Check if Supabase is configured
+    if (!isSupabaseConfigured) {
+      setError('Signup is not available. Please use the demo account to test the app.');
+      return;
+    }
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
@@ -101,6 +108,28 @@ export function SignupForm({ onSignup, onOAuthLogin, onSwitchToLogin }: SignupFo
           </div>
         )}
 
+        {/* Demo Account Notification - Only show when Supabase is not configured */}
+        {!isSupabaseConfigured && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-medium text-blue-900 mb-1">Demo Mode</h4>
+                <p className="text-sm text-blue-800 mb-2">
+                  Signup is not available in demo mode. Please use the demo account to test the app.
+                </p>
+                <button
+                  type="button"
+                  onClick={onSwitchToLogin}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium underline"
+                >
+                  Switch to login
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -114,6 +143,7 @@ export function SignupForm({ onSignup, onOAuthLogin, onSwitchToLogin }: SignupFo
                 onChange={(e) => handleInputChange('name', e.target.value)}
                 placeholder="Enter your full name"
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+                disabled={!isSupabaseConfigured}
                 required
               />
             </div>
@@ -131,6 +161,7 @@ export function SignupForm({ onSignup, onOAuthLogin, onSwitchToLogin }: SignupFo
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 placeholder="Enter your email"
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+                disabled={!isSupabaseConfigured}
                 required
               />
             </div>
@@ -148,12 +179,14 @@ export function SignupForm({ onSignup, onOAuthLogin, onSwitchToLogin }: SignupFo
                 onChange={(e) => handleInputChange('password', e.target.value)}
                 placeholder="Create a password"
                 className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+                disabled={!isSupabaseConfigured}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                disabled={!isSupabaseConfigured}
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -193,12 +226,14 @@ export function SignupForm({ onSignup, onOAuthLogin, onSwitchToLogin }: SignupFo
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                 placeholder="Confirm your password"
                 className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+                disabled={!isSupabaseConfigured}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                disabled={!isSupabaseConfigured}
               >
                 {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -216,6 +251,7 @@ export function SignupForm({ onSignup, onOAuthLogin, onSwitchToLogin }: SignupFo
             checked={acceptTerms}
             onChange={(e) => setAcceptTerms(e.target.checked)}
             className="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            disabled={!isSupabaseConfigured}
           />
           <label htmlFor="terms" className="text-sm text-gray-600">
             I agree to the{' '}
@@ -231,7 +267,7 @@ export function SignupForm({ onSignup, onOAuthLogin, onSwitchToLogin }: SignupFo
 
         <button
           type="submit"
-          disabled={!isFormValid || isLoading}
+          disabled={!isFormValid || isLoading || !isSupabaseConfigured}
           className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
         >
           {isLoading ? (
