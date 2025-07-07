@@ -36,6 +36,51 @@ function App() {
     scheduleContent,
   } = useContentData();
 
+  // Get tab from URL and sync with state
+  useEffect(() => {
+    const getTabFromUrl = () => {
+      const path = window.location.pathname;
+      if (path === '/') return 'dashboard';
+      if (path.startsWith('/')) return path.substring(1);
+      return 'dashboard';
+    };
+
+    const urlTab = getTabFromUrl();
+    const validTabs = ['dashboard', 'content', 'calendar', 'ai-generation', 'platforms', 'media', 'analytics', 'notion', 'settings'];
+    
+    if (validTabs.includes(urlTab)) {
+      setActiveTab(urlTab);
+    } else {
+      setActiveTab('dashboard');
+      // Update URL to match default tab
+      window.history.replaceState({}, '', '/dashboard');
+    }
+  }, []);
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const getTabFromUrl = () => {
+        const path = window.location.pathname;
+        if (path === '/') return 'dashboard';
+        if (path.startsWith('/')) return path.substring(1);
+        return 'dashboard';
+      };
+
+      const urlTab = getTabFromUrl();
+      const validTabs = ['dashboard', 'content', 'calendar', 'ai-generation', 'platforms', 'media', 'analytics', 'notion', 'settings'];
+      
+      if (validTabs.includes(urlTab)) {
+        setActiveTab(urlTab);
+      } else {
+        setActiveTab('dashboard');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Track tab changes for analytics
   useEffect(() => {
     if (isAuthenticated) {
@@ -266,6 +311,11 @@ function App() {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
+    
+    // Update URL to match the tab
+    const newPath = tab === 'dashboard' ? '/' : `/${tab}`;
+    window.history.pushState({}, '', newPath);
+    
     analyticsService.pageView(`/${tab}`);
     
     // Add breadcrumb for tab change

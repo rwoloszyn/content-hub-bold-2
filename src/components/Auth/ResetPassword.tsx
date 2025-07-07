@@ -72,15 +72,16 @@ export function ResetPassword() {
       // Track password reset success
       analyticsService.event('Auth', 'Password Reset Success');
       
-      // Redirect to login page after a delay
+      // Redirect to dashboard after successful reset
       setTimeout(() => {
-        window.location.href = '/';
-      }, 3000);
+        window.location.href = '/dashboard';
+      }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Password reset failed. Please try again.');
       
       // Track password reset error
-      analyticsService.event('Auth', 'Password Reset Error', err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Password reset failed';
+      analyticsService.event('Auth', 'Password Reset Error', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -105,7 +106,7 @@ export function ResetPassword() {
 
           <div>
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={() => window.location.href = '/dashboard'}
               className="w-full bg-primary-600 hover:bg-primary-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
             >
               Go to sign in

@@ -110,7 +110,7 @@ function AppWithAnalytics() {
       
       // Call original handler if it exists
       if (originalOnUnhandledRejection) {
-        return originalOnUnhandledRejection(event);
+        originalOnUnhandledRejection.call(window, event);
       }
     };
 
@@ -155,7 +155,7 @@ function ErrorFallback() {
             Refresh the page
           </button>
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={() => window.location.href = '/dashboard'}
             className="w-full text-gray-600 hover:text-gray-800 transition-colors"
           >
             Go to homepage
