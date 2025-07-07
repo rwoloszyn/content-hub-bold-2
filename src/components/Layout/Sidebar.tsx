@@ -8,12 +8,14 @@ import {
   Share2, 
   BarChart3,
   Image,
-  BookOpen
+  BookOpen,
+  Plus
 } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  onNewPost?: () => void;
 }
 
 const navigation = [
@@ -28,7 +30,7 @@ const navigation = [
   { id: 'settings', name: 'Settings', icon: Settings },
 ];
 
-export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+export function Sidebar({ activeTab, onTabChange, onNewPost }: SidebarProps) {
   return (
     <div className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 z-40">
       <div className="flex flex-col h-full">
@@ -56,7 +58,18 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           </div>
         </div>
         
-        <nav className="flex-1 p-4">
+        <div className="p-4">
+          {/* New Post Button */}
+          <button
+            onClick={onNewPost}
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 mb-6 shadow-sm"
+          >
+            <Plus className="w-5 h-5" />
+            <span>New Post</span>
+          </button>
+        </div>
+        
+        <nav className="flex-1 px-4 pb-4">
           <ul className="space-y-2">
             {navigation.map((item) => {
               const Icon = item.icon;

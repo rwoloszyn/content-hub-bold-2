@@ -17,11 +17,11 @@ export function OAuthCallback() {
         
         if (data.session) {
           // Track successful OAuth login
-          const provider = data.session.user.app_metadata.provider;
+          const provider = data.session.user.app_metadata.provider || 'unknown';
           analyticsService.trackLogin(provider);
           
-          // Redirect to home page or dashboard
-          window.location.href = '/';
+          // Redirect to dashboard
+          window.location.href = '/dashboard';
         } else {
           throw new Error('No session found');
         }
@@ -30,7 +30,8 @@ export function OAuthCallback() {
         setError('Authentication failed. Please try again.');
         
         // Track failed OAuth login
-        analyticsService.event('Auth', 'OAuth Login Failed', err.message);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        analyticsService.event('Auth', 'OAuth Login Failed', errorMessage);
         
         // Redirect to login page after a delay
         setTimeout(() => {

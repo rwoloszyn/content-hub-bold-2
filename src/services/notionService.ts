@@ -89,7 +89,7 @@ class NotionService {
       return true;
     } catch (error) {
       console.error('Failed to initialize Notion service:', error);
-      sentryService.captureException(error);
+      sentryService.captureException(error as Error);
       return false;
     }
   }
@@ -197,7 +197,7 @@ class NotionService {
       sentryService.captureException(error);
       
       // Track failed connection
-      analyticsService.event('Integration', 'Connection Failed', 'Notion', 0, { error: error.message });
+      analyticsService.event('Integration', 'Connection Failed', 'Notion', 0, { error: (error as Error).message });
       
       return false;
     }
@@ -278,7 +278,7 @@ class NotionService {
       sentryService.captureException(error);
       
       // Track failed connection
-      analyticsService.event('Integration', 'Connection Failed', 'Notion (Token)', 0, { error: error.message });
+      analyticsService.event('Integration', 'Connection Failed', 'Notion (Token)', 0, { error: (error as Error).message });
       
       return false;
     }
@@ -346,7 +346,7 @@ class NotionService {
       });
     } catch (error) {
       console.error('Failed to get Notion databases:', error);
-      sentryService.captureException(error);
+      sentryService.captureException(error as Error);
       throw error;
     }
   }
@@ -374,7 +374,7 @@ class NotionService {
       };
     } catch (error) {
       console.error(`Failed to get Notion database ${databaseId}:`, error);
-      sentryService.captureException(error);
+      sentryService.captureException(error as Error);
       throw error;
     }
   }
@@ -423,7 +423,7 @@ class NotionService {
       };
     } catch (error) {
       console.error(`Failed to get items from Notion database ${databaseId}:`, error);
-      sentryService.captureException(error);
+      sentryService.captureException(error as Error);
       throw error;
     }
   }
@@ -444,7 +444,7 @@ class NotionService {
       return blocks.results;
     } catch (error) {
       console.error(`Failed to get content for Notion page ${pageId}:`, error);
-      sentryService.captureException(error);
+      sentryService.captureException(error as Error);
       throw error;
     }
   }
@@ -472,7 +472,7 @@ class NotionService {
       return page.id;
     } catch (error) {
       console.error('Failed to create Notion page:', error);
-      sentryService.captureException(error);
+      sentryService.captureException(error as Error);
       throw error;
     }
   }
@@ -495,7 +495,7 @@ class NotionService {
       analyticsService.event('Notion', 'Page Updated', pageId);
     } catch (error) {
       console.error(`Failed to update Notion page ${pageId}:`, error);
-      sentryService.captureException(error);
+      sentryService.captureException(error as Error);
       throw error;
     }
   }
@@ -518,7 +518,7 @@ class NotionService {
       analyticsService.event('Notion', 'Page Archived', pageId);
     } catch (error) {
       console.error(`Failed to delete Notion page ${pageId}:`, error);
-      sentryService.captureException(error);
+      sentryService.captureException(error as Error);
       throw error;
     }
   }
@@ -587,7 +587,7 @@ class NotionService {
       return pageId;
     } catch (error) {
       console.error('Failed to map content to Notion page:', error);
-      sentryService.captureException(error);
+      sentryService.captureException(error as Error);
       throw error;
     }
   }
@@ -710,15 +710,25 @@ class NotionService {
         content[contentField] = this.extractPropertyValue(page.properties[notionProperty]);
       }
 
+      // Extract text content from blocks
+      const textContent = this.convertBlocksToText(blocks);
+      content.content = textContent;
+
       // Add page content if needed
       content.blocks = blocks;
       content.notionId = pageId;
       content.lastEditedTime = page.last_edited_time;
 
+      // If no title was mapped, try to extract from properties
+      if (!content.title) {
+        const pageTitle = this.extractPageTitle(page);
+        content.title = pageTitle;
+      }
+
       return content;
     } catch (error) {
       console.error(`Failed to map Notion page ${pageId} to content:`, error);
-      sentryService.captureException(error);
+      sentryService.captureException(error as Error);
       throw error;
     }
   }
