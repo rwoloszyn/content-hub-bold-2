@@ -46,11 +46,12 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               rel="noopener noreferrer"
               className="text-xs text-gray-500 hover:text-gray-700 flex items-center"
             >
-              <img 
-                src="https://bolt.new/badge" 
-                alt="Built with bolt.new" 
-                className="h-4"
-              />
+              <span className="flex items-center space-x-1">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M13 3L4 14H13L11 21L20 10H11L13 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>Built with bolt.new</span>
+              </span>
             </a>
           </div>
         </div>
