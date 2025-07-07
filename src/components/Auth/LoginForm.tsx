@@ -12,6 +12,7 @@ import {
 import { AuthLayout } from './AuthLayout';
 import { OAuthButtons } from './OAuthButtons';
 import { useAuth } from '../../hooks/useAuth';
+import { isSupabaseConfigured } from '../../services/supabaseClient';
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -29,7 +30,6 @@ export function LoginForm({ onLogin, onOAuthLogin, onSwitchToSignup, onForgotPas
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
-  const { loginWithOAuth } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,22 +65,24 @@ export function LoginForm({ onLogin, onOAuthLogin, onSwitchToSignup, onForgotPas
           </div>
         )}
 
-        {/* Demo Account Info */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start space-x-3">
-            <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h4 className="font-medium text-blue-900 mb-1">Demo Account</h4>
-              <p className="text-sm text-blue-800 mb-2">
-                Try the demo with these credentials:
-              </p>
-              <div className="text-sm text-blue-700 font-mono bg-blue-100 rounded px-2 py-1">
-                Email: demo@skaldora.com<br />
-                Password: password
+        {/* Demo Account Info - Only show when Supabase is not configured */}
+        {!isSupabaseConfigured && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-medium text-blue-900 mb-1">Demo Account</h4>
+                <p className="text-sm text-blue-800 mb-2">
+                  Try the demo with these credentials:
+                </p>
+                <div className="text-sm text-blue-700 font-mono bg-blue-100 rounded px-2 py-1">
+                  Email: demo@contenthub.com<br />
+                  Password: password
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="space-y-4">
           <div>
@@ -181,7 +183,7 @@ export function LoginForm({ onLogin, onOAuthLogin, onSwitchToSignup, onForgotPas
             onClick={onSwitchToSignup}
             className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
           >
-            Sign up for free
+            Sign up
           </button>
         </div>
       </form>

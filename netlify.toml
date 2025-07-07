@@ -29,4 +29,4 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.pexels.com https://ui-avatars.com https://lh3.googleusercontent.com https://graph.facebook.com https://media.licdn.com; connect-src 'self' https://accounts.google.com https://www.facebook.com https://www.linkedin.com;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.pexels.com https://ui-avatars.com https://lh3.googleusercontent.com https://graph.facebook.com https://media.licdn.com; connect-src 'self' https://accounts.google.com https://www.facebook.com https://www.linkedin.com https://orwkhnfpulyjpgctcupy.supabase.co;"
