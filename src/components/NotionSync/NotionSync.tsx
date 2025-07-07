@@ -1,3 +1,18 @@
+/**
+ * Notion Sync Component
+ * 
+ * Configuration Required:
+ * - VITE_NOTION_CLIENT_ID: Your Notion integration client ID
+ * - VITE_NOTION_CLIENT_SECRET: Your Notion integration client secret  
+ * - VITE_NOTION_REDIRECT_URI: OAuth redirect URI (usually your_domain/auth/callback/notion)
+ * 
+ * Setup Instructions:
+ * 1. Create a Notion integration at https://www.notion.so/my-integrations
+ * 2. Copy the integration token and client credentials
+ * 3. Set the redirect URI to your app's domain + /auth/callback/notion
+ * 4. Make sure your Supabase database has the required tables (run migrations)
+ */
+
 import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, 
@@ -19,7 +34,8 @@ import {
   Filter, 
   Search,
   ArrowRight,
-  Copy
+  Copy,
+  Info
 } from 'lucide-react';
 import { NotionConnectionWizard } from './NotionConnectionWizard';
 import { NotionDatabaseSelector } from './NotionDatabaseSelector';
@@ -63,6 +79,18 @@ export function NotionSync() {
     pullContentFromNotion
   } = useNotionSync();
 
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected' | 'error'>('checking');
+
+  useEffect(() => {
+    if (isConnected) {
+      setConnectionStatus('connected');
+    } else if (error) {
+      setConnectionStatus('error');
+    } else {
+      setConnectionStatus('disconnected');
+    }
+  }, [isConnected, error]);
+
   // Check for OAuth callback in URL
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -92,8 +120,15 @@ export function NotionSync() {
   }, []);
 
   const handleConnect = async (credentials: any) => {
-    await connectToNotion(credentials);
-    setShowConnectionWizard(false);
+    try {
+      console.log('🔍 Debug: Attempting to connect with credentials:', { method: credentials.method });
+      const result = await connectToNotion(credentials);
+      console.log('🔍 Debug: Connection result:', result);
+      setShowConnectionWizard(false);
+    } catch (err) {
+      console.error('🔍 Debug: Connection error:', err);
+      setOauthError('Failed to connect to Notion. Please check your credentials and try again.');
+    }
   };
 
   const handleSelectDatabase = async (database: NotionDatabase) => {
@@ -133,7 +168,13 @@ export function NotionSync() {
 
   const handlePullContent = async (mappingId: string) => {
     try {
+      console.log('🔍 Debug: Starting content pull for mapping:', mappingId);
+      console.log('🔍 Debug: Current connection state:', isConnected);
+      console.log('🔍 Debug: Available mappings:', databaseMappings);
+      
       const contentItems = await pullContentFromNotion(mappingId, 5);
+      
+      console.log('🔍 Debug: Content items received:', contentItems);
       
       // Add content items to content library
       contentItems.forEach(item => {
@@ -142,9 +183,82 @@ export function NotionSync() {
       
       return contentItems.length;
     } catch (err) {
-      console.error('Failed to pull content:', err);
+      console.error('🔍 Debug: Error in handlePullContent:', err);
       return 0;
     }
+  };
+
+  const handleSyncDatabase = async (mappingId: string) => {
+    try {
+      console.log('🔍 Debug: Starting database sync for mapping:', mappingId);
+      const result = await syncDatabase(mappingId);
+      console.log('🔍 Debug: Sync result:', result);
+      return result;
+    } catch (err) {
+      console.error('🔍 Debug: Database sync error:', err);
+      throw err;
+    }
+  };
+
+  /*
+   * Common Troubleshooting Issues:
+   * 
+   * 1. "Notion client not initialized" - Check environment variables
+   * 2. "Failed to connect to Notion" - Check client ID and secret
+   * 3. "No databases found" - Make sure integration has access to databases
+   * 4. "Failed to sync database" - Check database permissions and property mappings
+   * 5. "Content not pulling" - Check content mapping configuration
+   * 
+   * Debug Steps:
+   * 1. Click the "Debug" button to check configuration
+   * 2. Open browser console to see detailed debug logs
+   * 3. Check network tab for API call errors
+   * 4. Verify Supabase tables exist and have correct schema
+   */
+
+  // Enhanced debug function with configuration guidance
+  const checkConfiguration = () => {
+    console.log('🔍 Debug: Notion Integration Configuration Check');
+    console.log('=====================================');
+    
+    const clientId = import.meta.env.VITE_NOTION_CLIENT_ID;
+    const clientSecret = import.meta.env.VITE_NOTION_CLIENT_SECRET;
+    const redirectUri = import.meta.env.VITE_NOTION_REDIRECT_URI;
+    
+    console.log('Environment Variables:');
+    console.log('- VITE_NOTION_CLIENT_ID:', clientId ? '✅ Set' : '❌ Not Set');
+    console.log('- VITE_NOTION_CLIENT_SECRET:', clientSecret ? '✅ Set' : '❌ Not Set');
+    console.log('- VITE_NOTION_REDIRECT_URI:', redirectUri ? '✅ Set' : '❌ Not Set');
+    
+    console.log('\nApplication State:');
+    console.log('- User:', user ? '✅ Authenticated' : '❌ Not Authenticated');
+    console.log('- Notion Connection:', isConnected ? '✅ Connected' : '❌ Not Connected');
+    console.log('- Databases Available:', databases.length);
+    console.log('- Database Mappings:', databaseMappings.length);
+    console.log('- Loading State:', loading);
+    console.log('- Error State:', error || 'None');
+    
+    const connection = notionService.getConnectionInfo();
+    if (connection) {
+      console.log('\nConnection Details:');
+      console.log('- Workspace:', connection.workspaceName);
+      console.log('- Connected At:', connection.connectedAt);
+    }
+    
+    console.log('\nService State:');
+    console.log('- Service Connected:', notionService.isConnected());
+    console.log('- Service Connection Info:', notionService.getConnectionInfo());
+    
+    if (!clientId || !clientSecret) {
+      console.log('\n🚨 CONFIGURATION ERROR:');
+      console.log('Missing required environment variables for Notion integration.');
+      console.log('Please check your .env file and ensure you have:');
+      console.log('- VITE_NOTION_CLIENT_ID');
+      console.log('- VITE_NOTION_CLIENT_SECRET');
+      console.log('- VITE_NOTION_REDIRECT_URI (optional, defaults to current domain)');
+    }
+    
+    console.log('=====================================');
   };
 
   const getOverviewStats = () => {
@@ -158,6 +272,24 @@ export function NotionSync() {
 
   const stats = getOverviewStats();
   const connection = notionService.getConnectionInfo();
+
+  const getStatusColor = () => {
+    switch (connectionStatus) {
+      case 'connected': return 'text-green-600';
+      case 'disconnected': return 'text-gray-600';
+      case 'error': return 'text-red-600';
+      default: return 'text-yellow-600';
+    }
+  };
+
+  const getStatusText = () => {
+    switch (connectionStatus) {
+      case 'connected': return 'Connected';
+      case 'disconnected': return 'Not Connected';
+      case 'error': return 'Connection Error';
+      default: return 'Checking...';
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -196,6 +328,13 @@ export function NotionSync() {
               >
                 <Settings className="w-4 h-4" />
                 <span>Settings</span>
+              </button>
+              <button
+                onClick={checkConfiguration}
+                className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <Info className="w-4 h-4" />
+                <span>Debug</span>
               </button>
               <button
                 onClick={() => setShowDatabaseSelector(true)}
@@ -461,7 +600,7 @@ export function NotionSync() {
                             <span>Pull Content</span>
                           </button>
                           <button
-                            onClick={() => syncDatabase(mapping.id)}
+                            onClick={() => handleSyncDatabase(mapping.id)}
                             className="flex items-center space-x-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
                           >
                             <RefreshCw className="w-3 h-3" />
@@ -564,7 +703,7 @@ export function NotionSync() {
                           Pull Content
                         </button>
                         <button
-                          onClick={() => syncDatabase(mapping.id)}
+                          onClick={() => handleSyncDatabase(mapping.id)}
                           className="flex-1 bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                         >
                           Sync Now
@@ -730,7 +869,7 @@ export function NotionSync() {
             <div className="p-6">
               <NotionContentMapper
                 database={selectedDatabase}
-                existingMapping={selectedMapping}
+                existingMapping={selectedMapping || undefined}
                 onSave={handleSaveMapping}
                 onCancel={() => {
                   setShowContentMapper(false);
