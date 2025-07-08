@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  X, 
   Settings, 
-  RefreshCw, 
-  Clock, 
-  Database,
-  AlertTriangle,
-  CheckCircle,
-  Info,
+  CheckCircle, 
+  AlertCircle, 
+  RefreshCw,
+  Plus,
   Trash2,
-  Save
+  Edit3,
+  ExternalLink,
+  Info,
+  Save,
+  X
 } from 'lucide-react';
+import { useNotionSync } from '../../hooks/useNotionSync';
+import { NotionDatabase } from '../../services/notionService';
 
 interface SyncSettings {
   autoSync: boolean;
@@ -257,7 +260,7 @@ export function NotionSyncSettings({
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
               <div>
                 <h4 className="font-medium text-yellow-900 mb-1">Disconnect Warning</h4>
                 <p className="text-sm text-yellow-800 mb-3">

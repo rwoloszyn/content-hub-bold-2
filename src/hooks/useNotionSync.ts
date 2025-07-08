@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { notionService, NotionDatabase, NotionPage } from '../services/notionService';
+import { notionService, NotionDatabase } from '../services/notionService';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from './useAuth';
 import { ContentItem } from '../types';
@@ -456,7 +456,7 @@ export function useNotionSync() {
       await loadDatabaseMappings();
 
       // Track mapping deletion
-      analyticsService.event('Notion', 'Database Mapping Deleted');r
+      analyticsService.event('Notion', 'Database Mapping Deleted');
     } catch (err) {
       console.error('Failed to delete database mapping:', err);
       setError('Failed to delete database mapping. Please try again.');

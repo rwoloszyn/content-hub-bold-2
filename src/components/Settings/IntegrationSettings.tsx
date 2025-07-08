@@ -1,19 +1,17 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Zap, 
-  Key, 
-  Globe, 
-  Database,
-  CheckCircle,
-  AlertCircle,
-  ExternalLink,
-  Plus,
-  Settings,
-  Trash2,
+  ExternalLink, 
   RefreshCw,
-  Eye,
+  Settings,
+  Plus,
+  Trash2,
+  Key,
   EyeOff,
-  Copy
+  Eye,
+  Copy,
+  Globe,
+  Database
 } from 'lucide-react';
 
 interface IntegrationSettingsProps {

@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Globe, 
-  Check, 
-  X, 
-  AlertTriangle, 
-  RefreshCw, 
-  Plus,
-  Trash2,
-  ExternalLink,
+  Plus, 
+  Trash2, 
+  ExternalLink, 
+  RefreshCw,
+  AlertCircle,
   Copy,
-  CheckCircle,
-  Clock
+  Settings,
+  Check,
+  Clock,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import { getEntriLinks } from '../../services/domainService';
 

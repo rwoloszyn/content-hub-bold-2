@@ -1,15 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
-  Palette, 
   Monitor, 
-  Sun, 
   Moon, 
-  Smartphone,
-  Eye,
+  Sun,
+  Palette,
   Type,
   Layout,
-  Zap,
-  Check
+  Eye,
+  Check,
+  Zap
 } from 'lucide-react';
 
 interface AppearanceSettingsProps {

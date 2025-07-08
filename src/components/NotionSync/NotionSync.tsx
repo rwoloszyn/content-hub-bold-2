@@ -13,29 +13,33 @@
  * 4. Make sure your Supabase database has the required tables (run migrations)
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  BookOpen, 
-  Plus, 
-  Settings, 
+  Database, 
   RefreshCw, 
   CheckCircle, 
-  AlertTriangle, 
-  ExternalLink, 
-  Database, 
-  FileText, 
-  Calendar, 
-  Users, 
-  Zap, 
-  Download, 
-  Upload, 
-  FolderSync as Sync, 
-  Clock, 
-  Filter, 
+  AlertCircle, 
+  Settings, 
+  ExternalLink,
+  Plus,
+  Trash2 as TrashIcon,
+  Edit3,
+  RotateCcw as SyncIcon,
+  Clock,
+  Users,
+  FileText,
+  BarChart3,
+  Calendar,
+  Filter,
   Search,
-  ArrowRight,
-  Copy,
-  Info
+  ChevronDown,
+  ChevronRight,
+  Info,
+  X as XIcon,
+  Save,
+  BookOpen,
+  Download,
+  AlertTriangle
 } from 'lucide-react';
 import { NotionConnectionWizard } from './NotionConnectionWizard';
 import { NotionDatabaseSelector } from './NotionDatabaseSelector';
@@ -45,7 +49,6 @@ import { useNotionSync, DatabaseMapping } from '../../hooks/useNotionSync';
 import { notionService, NotionDatabase } from '../../services/notionService';
 import { useAuth } from '../../hooks/useAuth';
 import { useContentData } from '../../hooks/useContentData';
-import { ContentItem } from '../../types';
 
 export function NotionSync() {
   const { user } = useAuth();
@@ -296,7 +299,7 @@ export function NotionSync() {
       {/* OAuth Error */}
       {oauthError && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">
-          <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
           <div>
             <h3 className="font-medium text-red-800 mb-1">Connection Error</h3>
             <p className="text-red-700">{oauthError}</p>
@@ -305,7 +308,7 @@ export function NotionSync() {
             onClick={() => setOauthError(null)}
             className="ml-auto text-red-500 hover:text-red-700"
           >
-            <X className="w-4 h-4" />
+            <XIcon className="w-4 h-4" />
           </button>
         </div>
       )}
@@ -375,7 +378,7 @@ export function NotionSync() {
                 <p className="text-sm text-blue-700">Automatically sync content to your Notion databases</p>
               </div>
               <div className="text-left p-4 bg-green-50 rounded-lg">
-                <Sync className="w-6 h-6 text-green-600 mb-2" />
+                <SyncIcon className="w-6 h-6 text-green-600 mb-2" />
                 <h4 className="font-medium text-green-900 mb-1">Two-Way Sync</h4>
                 <p className="text-sm text-green-700">Keep content in sync between platforms</p>
               </div>
@@ -477,7 +480,7 @@ export function NotionSync() {
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="p-3 bg-green-100 rounded-lg">
-                      <Sync className="w-6 h-6 text-green-600" />
+                      <SyncIcon className="w-6 h-6 text-green-600" />
                     </div>
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900">{stats.totalSyncs}</h3>
@@ -730,7 +733,7 @@ export function NotionSync() {
                           }}
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <TrashIcon className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -862,7 +865,7 @@ export function NotionSync() {
                 }}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <X className="w-6 h-6" />
+                <XIcon className="w-6 h-6" />
               </button>
             </div>
             

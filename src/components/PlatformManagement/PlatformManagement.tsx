@@ -1,14 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Plus, 
   Settings, 
   CheckCircle, 
   AlertCircle, 
-  ExternalLink,
   RefreshCw,
   Info,
-  Shield,
-  Zap,
   Users,
   BarChart3,
   Calendar
@@ -85,7 +82,6 @@ const availablePlatforms: Array<{
 
 export function PlatformManagement({ 
   platforms, 
-  onUpdatePlatform, 
   onConnectPlatform, 
   onDisconnectPlatform 
 }: PlatformManagementProps) {

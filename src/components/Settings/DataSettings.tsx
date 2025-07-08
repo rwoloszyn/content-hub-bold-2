@@ -1,18 +1,13 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
-  Database, 
+  Shield, 
   Download, 
   Trash2, 
-  Shield, 
-  Eye,
-  AlertTriangle,
+  RefreshCw,
+  AlertCircle,
   CheckCircle,
-  Clock,
   FileText,
-  Users,
-  Lock,
-  Globe,
-  RefreshCw
+  Settings
 } from 'lucide-react';
 
 export function DataSettings() {
@@ -211,7 +206,7 @@ export function DataSettings() {
       {/* Data Retention */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center space-x-3 mb-4">
-          <Clock className="w-5 h-5 text-purple-600" />
+          <Settings className="w-5 h-5 text-purple-600" />
           <h3 className="text-lg font-semibold text-gray-900">Data Retention</h3>
         </div>
         
@@ -260,7 +255,7 @@ export function DataSettings() {
       {/* GDPR Compliance */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center space-x-3 mb-4">
-          <Globe className="w-5 h-5 text-blue-600" />
+          <Shield className="w-5 h-5 text-blue-600" />
           <h3 className="text-lg font-semibold text-gray-900">GDPR & Compliance</h3>
         </div>
         
@@ -302,7 +297,7 @@ export function DataSettings() {
           <div>
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
               <div className="flex items-start space-x-3">
-                <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
                 <div>
                   <h4 className="font-medium text-red-900 mb-1">Warning: This action cannot be undone</h4>
                   <ul className="text-sm text-red-800 space-y-1">

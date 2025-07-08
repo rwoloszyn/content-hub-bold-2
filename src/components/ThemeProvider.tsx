@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { lingoService, DesignToken } from '../services/lingoService';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { lingoService } from '../services/lingoService';
 
 interface ThemeContextType {
   colors: Record<string, string>;
