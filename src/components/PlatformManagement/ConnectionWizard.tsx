@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   X, 
   ArrowRight, 
@@ -7,7 +7,6 @@ import {
   ExternalLink,
   Shield,
   Key,
-  Globe,
   AlertCircle,
   Info,
   Copy,
@@ -100,6 +99,32 @@ const platformConfig = {
       'Set up redirect URLs',
       'Get your Client Key and Client Secret'
     ]
+  },
+  wordpress: {
+    name: 'WordPress',
+    color: '#21759B',
+    authUrl: 'https://public-api.wordpress.com/oauth2/authorize',
+    scopes: ['auth', 'posts'],
+    instructions: [
+      'Go to WordPress.com Developer Console',
+      'Create a new application',
+      'Configure OAuth redirect URIs',
+      'Get your Client ID and Client Secret',
+      'Set up your WordPress site connection'
+    ]
+  },
+  medium: {
+    name: 'Medium',
+    color: '#00AB6C',
+    authUrl: 'https://medium.com/m/oauth/authorize',
+    scopes: ['basicProfile', 'publishPost'],
+    instructions: [
+      'Go to Medium Settings',
+      'Navigate to Integration tokens',
+      'Generate a new integration token',
+      'Copy the generated token',
+      'Use token for API authentication'
+    ]
   }
 };
 
@@ -129,7 +154,8 @@ export function ConnectionWizard({ platform, onClose, onComplete }: ConnectionWi
     // Simulate OAuth flow
     const authUrl = `${config.authUrl}?client_id=your_client_id&redirect_uri=${encodeURIComponent(window.location.origin)}&scope=${config.scopes.join(',')}&response_type=code`;
     
-    // In a real implementation, this would open a popup or redirect
+    // In a real implementation, this would open a popup or redirect to: authUrl
+    // window.location.href = authUrl;
     setTimeout(() => {
       setIsConnecting(false);
       setCurrentStep(3);
@@ -261,7 +287,7 @@ export function ConnectionWizard({ platform, onClose, onComplete }: ConnectionWi
               <div className="bg-gray-50 rounded-lg p-6">
                 <h4 className="font-medium text-gray-900 mb-3">Permissions Required:</h4>
                 <div className="space-y-2">
-                  {config.scopes.map((scope, index) => (
+                  {config.scopes.map((scope: string, index: number) => (
                     <div key={index} className="flex items-center space-x-2">
                       <CheckCircle className="w-4 h-4 text-green-500" />
                       <span className="text-sm text-gray-700">{scope}</span>
@@ -318,7 +344,7 @@ export function ConnectionWizard({ platform, onClose, onComplete }: ConnectionWi
               <div className="bg-gray-50 rounded-lg p-6">
                 <h4 className="font-medium text-gray-900 mb-4">Step-by-step guide:</h4>
                 <ol className="space-y-3">
-                  {config.instructions.map((instruction, index) => (
+                  {config.instructions.map((instruction: string, index: number) => (
                     <li key={index} className="flex items-start space-x-3">
                       <span className="flex-shrink-0 w-6 h-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-sm font-medium">
                         {index + 1}

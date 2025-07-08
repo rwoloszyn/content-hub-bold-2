@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   X, 
   BookOpen, 
@@ -9,7 +9,6 @@ import {
   Shield,
   Zap,
   Users,
-  BarChart3,
   Settings,
   Globe
 } from 'lucide-react';

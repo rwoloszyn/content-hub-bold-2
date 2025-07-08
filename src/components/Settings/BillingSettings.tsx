@@ -1,21 +1,22 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   CreditCard, 
-  Download, 
   Calendar, 
-  Check, 
-  Star,
-  AlertCircle,
-  ExternalLink,
-  RefreshCw,
-  Plus,
+  CheckCircle, 
+  AlertCircle, 
+  Download,
+  Clock,
+  DollarSign,
+  Package,
   Edit3,
   Trash2
 } from 'lucide-react';
 
 export function BillingSettings() {
-  const [currentPlan, setCurrentPlan] = useState('pro');
+  const [currentPlan] = useState('pro');
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const plans = [
     {
@@ -138,7 +139,7 @@ export function BillingSettings() {
       {/* Current Plan */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center space-x-3 mb-4">
-          <Star className="w-5 h-5 text-yellow-500" />
+          <CheckCircle className="w-5 h-5 text-green-500" />
           <h3 className="text-lg font-semibold text-gray-900">Current Plan</h3>
         </div>
         
@@ -229,7 +230,7 @@ export function BillingSettings() {
               <ul className="space-y-2 mb-6">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-center space-x-2">
-                    <Check className="w-4 h-4 text-green-500" />
+                    <CheckCircle className="w-4 h-4 text-green-500" />
                     <span className="text-sm text-gray-700">{feature}</span>
                   </li>
                 ))}
@@ -267,7 +268,7 @@ export function BillingSettings() {
             <h3 className="text-lg font-semibold text-gray-900">Payment Methods</h3>
           </div>
           <button className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
-            <Plus className="w-4 h-4" />
+            <Package className="w-4 h-4" />
             <span>Add Payment Method</span>
           </button>
         </div>
