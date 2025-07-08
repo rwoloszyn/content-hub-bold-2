@@ -456,7 +456,7 @@ export function useNotionSync() {
       await loadDatabaseMappings();
 
       // Track mapping deletion
-      analyticsService.event('Notion', 'Database Mapping Deleted');
+      analyticsService.event('Notion', 'Database Mapping Deleted');r
     } catch (err) {
       console.error('Failed to delete database mapping:', err);
       setError('Failed to delete database mapping. Please try again.');
